@@ -180,12 +180,6 @@ static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode
 
 static void WIIU_PumpEvents(_THIS)
 {
-	if (!WHBProcIsRunning()) {
-		SDL_Event ev;
-		ev.type = SDL_QUIT;
-		SDL_PushEvent(&ev);
-		return;
-	}
 }
 
 static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch)
