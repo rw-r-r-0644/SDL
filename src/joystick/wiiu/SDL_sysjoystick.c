@@ -136,37 +136,33 @@ SDL_SYS_JoystickUpdate(SDL_Joystick *joystick)
 		static int16_t x2_old = 0;
 		static int16_t y2_old = 0;
 
-		static uint32_t hold_old = 0;
-		uint32_t changed;
-
 		VPADStatus vpad;
 		VPADReadError error;
-		VPADTouchData tpdata;
-
 		VPADRead(VPAD_CHAN_0, &vpad, 1, &error);
+		if (error != VPAD_READ_SUCCESS)
+			return;
 
 		// touchscreen
-		VPADGetTPCalibratedPoint(0, &tpdata, &vpad.tpFiltered1);
-		if (tpdata.touched) {
+		if (vpad.tpFiltered1.touched) {
 			// Send an initial touch
 			SDL_SendTouch(0, 0, SDL_TRUE,
-					(float) tpdata.x / 1280.0f,
-					(float) tpdata.y / 720.0f, 1);
+					(float) vpad.tpFiltered1.x / 4096.0f,
+					(float) (4096 - vpad.tpFiltered1.y) / 4096.0f, 1);
 
 			// Always send the motion
 			SDL_SendTouchMotion(0, 0,
-					(float) tpdata.x / 1280.0f,
-					(float) tpdata.y / 720.0f, 1);
+					(float) vpad.tpFiltered1.x / 4096.0f,
+					(float) (4096 - vpad.tpFiltered1.y) / 4096.0f, 1);
 
 			// Update old values
-			last_touch_x = tpdata.x;
-			last_touch_y = tpdata.y;
+			last_touch_x = vpad.tpFiltered1.x;
+			last_touch_y = vpad.tpFiltered1.y;
 			last_touched = 1;
 		} else if (last_touched) {
 			// Finger released from screen
 			SDL_SendTouch(0, 0, SDL_FALSE,
-					(float) last_touch_x / 1280.0f,
-					(float) last_touch_y / 720.0f, 1);
+					(float) last_touch_x / 4096.0f,
+					(float) (4096 - last_touch_y) / 4096.0f, 1);
 		}
 
 		// axys
@@ -193,19 +189,12 @@ SDL_SYS_JoystickUpdate(SDL_Joystick *joystick)
 		}
 
 		// buttons
-		changed = vpad.hold ^ hold_old;
-		hold_old = vpad.hold;
-		if (!changed) {
-			return;
-		}
-		for(int i = 0; i < joystick->nbuttons; i++) {
-			if (changed & vpad_button_map[i]) {
-				SDL_PrivateJoystickButton(
-					joystick, (Uint8) i,
-					(Uint8) ((vpad.hold & vpad_button_map[i]) ? SDL_PRESSED : SDL_RELEASED)
-				);
-			}
-		}
+		for(int i = 0; i < joystick->nbuttons; i++)
+			if (vpad.trigger & vpad_button_map[i])
+				SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_PRESSED);
+		for(int i = 0; i < joystick->nbuttons; i++)
+			if (vpad.release & vpad_button_map[i])
+				SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_RELEASED);
 	}
 }
 
