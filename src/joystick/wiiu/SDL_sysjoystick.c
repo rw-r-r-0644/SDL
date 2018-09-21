@@ -138,31 +138,33 @@ SDL_SYS_JoystickUpdate(SDL_Joystick *joystick)
 
 		VPADStatus vpad;
 		VPADReadError error;
+		VPADTouchData tpdata;
 		VPADRead(VPAD_CHAN_0, &vpad, 1, &error);
 		if (error != VPAD_READ_SUCCESS)
 			return;
 
 		// touchscreen
-		if (vpad.tpFiltered1.touched) {
+		VPADGetTPCalibratedPoint(VPAD_CHAN_0, &tpdata, &vpad.tpFiltered1);
+		if (tpdata.touched) {
 			// Send an initial touch
 			SDL_SendTouch(0, 0, SDL_TRUE,
-					(float) vpad.tpFiltered1.x / 4096.0f,
-					(float) (4096 - vpad.tpFiltered1.y) / 4096.0f, 1);
+					(float) tpdata.x / 1280.0f,
+					(float) tpdata.y / 720.0f, 1);
 
 			// Always send the motion
 			SDL_SendTouchMotion(0, 0,
-					(float) vpad.tpFiltered1.x / 4096.0f,
-					(float) (4096 - vpad.tpFiltered1.y) / 4096.0f, 1);
+					(float) tpdata.x / 1280.0f,
+					(float) tpdata.y / 720.0f, 1);
 
 			// Update old values
-			last_touch_x = vpad.tpFiltered1.x;
-			last_touch_y = vpad.tpFiltered1.y;
+			last_touch_x = tpdata.x;
+			last_touch_y = tpdata.y;
 			last_touched = 1;
 		} else if (last_touched) {
 			// Finger released from screen
 			SDL_SendTouch(0, 0, SDL_FALSE,
-					(float) last_touch_x / 4096.0f,
-					(float) (4096 - last_touch_y) / 4096.0f, 1);
+					(float) last_touch_x / 1280.0f,
+					(float) last_touch_y / 720.0f, 1);
 		}
 
 		// axys
