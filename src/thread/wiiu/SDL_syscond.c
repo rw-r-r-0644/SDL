@@ -24,7 +24,16 @@
 
 #include "SDL_thread.h"
 
+#include <stdbool.h>
+#include <coreinit/alarm.h>
+#include <coreinit/mutex.h>
 #include <coreinit/condition.h>
+
+typedef struct
+{
+   OSCondition *cond;
+   bool timed_out;
+} WIIU_CondWaitTimeoutData;
 
 /* Create a condition variable */
 SDL_cond *
@@ -91,10 +100,36 @@ Thread B:
     SDL_UnlockMutex(lock);
  */
 
+static void
+SDL_CondWaitTimeoutCallback(OSAlarm *alarm, OSContext *context)
+{
+   WIIU_CondWaitTimeoutData *data = (WIIU_CondWaitTimeoutData *)OSGetAlarmUserData(alarm);
+   data->timed_out = true;
+   OSSignalCond(data->cond);
+}
+
 int
 SDL_CondWaitTimeout(SDL_cond * cond, SDL_mutex * mutex, Uint32 ms)
 {
-    return -1;
+	WIIU_CondWaitTimeoutData data;
+	data.timed_out = false;
+	data.cond = (OSCondition *)cond;
+
+	// Timeout is zero
+	if (!ms)
+		return SDL_MUTEX_TIMEDOUT;
+
+	// Set an alarm
+	OSAlarm alarm;
+	OSCreateAlarm(&alarm);
+	OSSetAlarmUserData(&alarm, &data);
+	OSSetAlarm(&alarm, OSMillisecondsToTicks(ms), &SDL_CondWaitTimeoutCallback);
+
+	// Wait on the condition
+	OSWaitCond((OSCondition *)cond, (OSMutex *)mutex);
+
+	OSCancelAlarm(&alarm);
+	return data.timed_out ? SDL_MUTEX_TIMEDOUT : 0;
 }
 
 /* Wait on the condition variable forever */
