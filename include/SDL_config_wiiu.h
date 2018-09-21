@@ -128,6 +128,7 @@
 
 /* Wii U thread support (src/thread/wiiu/\*.c) */
 #define SDL_THREAD_WIIU        1
+#define SDL_THREADS_DISABLED   0
 
 /* Wii U timer support (src/timer/wiiu/\*.c) */
 #define SDL_TIMER_WIIU        1
