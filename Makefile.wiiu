@@ -36,7 +36,6 @@ SOURCES = \
 	src/stdlib/*.c \
 	src/thread/*.c \
 	src/thread/wiiu/*.c \
-	src/thread/generic/*.c \
 	src/timer/*.c \
 	src/timer/wiiu/*.c \
 	src/timer/dummy/*.c \
