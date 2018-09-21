@@ -20,18 +20,12 @@
 */
 #include "../../SDL_internal.h"
 
+#if SDL_THREAD_WIIU
+
 #include <errno.h>
 #include <coreinit/mutex.h>
 #include "SDL_thread.h"
 
-struct SDL_mutex
-{
-    pthread_mutex_t id;
-#if FAKE_RECURSIVE_MUTEX
-    int recursive;
-    pthread_t owner;
-#endif
-};
 
 SDL_mutex *
 SDL_CreateMutex(void)
@@ -72,5 +66,7 @@ SDL_UnlockMutex(SDL_mutex * mutex)
     OSUnlockMutex((OSMutex *)mutex);
     return 0;
 }
+
+#endif /* SDL_THREAD_WIIU */
 
 /* vi: set ts=4 sw=4 expandtab: */
