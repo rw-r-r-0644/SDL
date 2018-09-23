@@ -154,5 +154,10 @@
 /* Wii U can't load shared object (src/loadso/dummy/\*.c) */
 #define SDL_LOADSO_DISABLED    1
 
+/* Hack: for some reason some arch defines are missing in the
+   toolchain, so SDL_endian.h will think we're little endian 
+   without that */
+#define SDL_BYTEORDER          SDL_BIG_ENDIAN
+
 
 #endif /* SDL_config_wiiu_h_ */
