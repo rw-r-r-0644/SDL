@@ -153,7 +153,7 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
         }
 
         memset(this->hidden->mixbufs[i], 0, this->spec.size);
-        DCFlushRange(this->hidden->mixbufs[i], this->spec.size);
+        DCStoreRange(this->hidden->mixbufs[i], this->spec.size);
     }
 
 /*  Start messing with the voice again */
@@ -263,7 +263,7 @@ static void _WIIUAUDIO_framecallback() {
 
 static void WIIUAUDIO_PlayDevice(_THIS) {
 /*  Comment this out for broken-record mode ;3 */
-    DCFlushRange(this->hidden->mixbufs[this->hidden->renderingid], this->spec.size);
+    DCStoreRange(this->hidden->mixbufs[this->hidden->renderingid], this->spec.size);
 /*  Signal we're no longer rendering this buffer, AX callback will notice later */
     this->hidden->renderingid = next_id(this->hidden->renderingid);
 }
