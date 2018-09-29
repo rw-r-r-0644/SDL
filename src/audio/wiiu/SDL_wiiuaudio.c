@@ -106,7 +106,9 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
             { .volume = 0x0000 }, //bus 3
         }
     };
+    AXVoiceDeviceMixData tvmix = drcmix;
     AXSetVoiceDeviceMix(this->hidden->voice, AX_DEVICE_TYPE_DRC, 0, &drcmix);
+    AXSetVoiceDeviceMix(this->hidden->voice, AX_DEVICE_TYPE_TV, 0, &tvmix);
 
 /*  Set the samplerate conversion ratio
     <source sample rate> / <target sample rate> */
