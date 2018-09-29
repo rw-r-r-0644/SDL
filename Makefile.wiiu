@@ -19,7 +19,7 @@ SOURCES = \
 	src/*.c \
 	src/atomic/*.c \
 	src/audio/*.c \
-	src/audio/dummy/*.c \
+	src/audio/wiiu/*.c \
 	src/cpuinfo/*.c \
 	src/events/*.c \
 	src/file/*.c \
