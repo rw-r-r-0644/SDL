@@ -136,8 +136,8 @@
 /* Wii U joystick driver (src/joystick/wiiu/\*.c) */
 #define SDL_JOYSTICK_WIIU      1
 
-/* Enable the stub audio driver (src/audio/dummy/\*.c) */
-#define SDL_AUDIO_DRIVER_DUMMY 1
+/* Enable the wiiu audio driver (src/audio/wiiu/\*.c) */
+#define SDL_AUDIO_DRIVER_WIIU 1
 
 /* Wii U video dirver */
 #define SDL_VIDEO_DRIVER_WIIU  1
