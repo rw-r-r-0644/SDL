@@ -225,6 +225,20 @@ static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *forma
 	return 0;
 }
 
+static void render_scene(WIIU_WindowData *data) {
+	WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	GX2SetFetchShader(&group.fetchShader);
+	GX2SetVertexShader(group.vertexShader);
+	GX2SetPixelShader(group.pixelShader);
+	GX2RSetAttributeBuffer(&position_buffer, 0, position_buffer.elemSize, 0);
+	GX2RSetAttributeBuffer(&tex_coord_buffer, 1, tex_coord_buffer.elemSize, 0);
+
+	GX2SetPixelTexture(&data->texture, group.pixelShader->samplerVars[0].location);
+	GX2SetPixelSampler(&sampler, group.pixelShader->samplerVars[0].location);
+
+	GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
+}
+
 static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects)
 {
 	WIIU_WindowData *data = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_DATA);
@@ -234,31 +248,11 @@ static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rec
 	WHBGfxBeginRender();
 
 	WHBGfxBeginRenderTV();
-	WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	GX2SetFetchShader(&group.fetchShader);
-	GX2SetVertexShader(group.vertexShader);
-	GX2SetPixelShader(group.pixelShader);
-	GX2RSetAttributeBuffer(&position_buffer, 0, position_buffer.elemSize, 0);
-	GX2RSetAttributeBuffer(&tex_coord_buffer, 1, tex_coord_buffer.elemSize, 0);
-
-	GX2SetPixelTexture(&data->texture, group.pixelShader->samplerVars[0].location);
-	GX2SetPixelSampler(&sampler, group.pixelShader->samplerVars[0].location);
-
-	GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
+	render_scene(data);
 	WHBGfxFinishRenderTV();
 
 	WHBGfxBeginRenderDRC();
-	WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	GX2SetFetchShader(&group.fetchShader);
-	GX2SetVertexShader(group.vertexShader);
-	GX2SetPixelShader(group.pixelShader);
-	GX2RSetAttributeBuffer(&position_buffer, 0, position_buffer.elemSize, 0);
-	GX2RSetAttributeBuffer(&tex_coord_buffer, 1, tex_coord_buffer.elemSize, 0);
-
-	GX2SetPixelTexture(&data->texture, group.pixelShader->samplerVars[0].location);
-	GX2SetPixelSampler(&sampler, group.pixelShader->samplerVars[0].location);
-
-	GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
+	render_scene(data);
 	WHBGfxFinishRenderDRC();
 
 	WHBGfxFinishRender();
