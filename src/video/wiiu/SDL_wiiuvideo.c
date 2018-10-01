@@ -202,14 +202,35 @@ static void render_scene(WIIU_WindowData *data) {
 static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects)
 {
 	WIIU_WindowData *data = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_DATA);
-
 	float* buffer;
-	static const float position_vb[] =
+	int int_x, int_y, int_w, int_h;
+	float x, y, w, h;
+
+	SDL_GetWindowPosition(window, &int_x, &int_y);
+	SDL_GetWindowSize(window, &int_w, &int_h);
+
+	//TODO: move math to a shader
+	x = (float)int_x;
+	y = (float)int_y;
+	w = (float)int_w;
+	h = (float)int_h;
+
+	//x and y need to be between -1.0f and 1.0f
+	x /= (SCREEN_WIDTH / 2);
+	x -= 1.0f;
+	y /= (SCREEN_HEIGHT / 2);
+	y -= 1.0f;
+
+	//w and h need to be between 0.0f and 2.0f
+	w /= (SCREEN_WIDTH / 2);
+	h /= (SCREEN_HEIGHT / 2);
+
+	float position_vb[] =
 	{
-		-1.0f, -1.0f,
-		 1.0f, -1.0f,
-		 1.0f,  1.0f,
-		-1.0f,  1.0f,
+		x, y,
+		x + w, y,
+		x + w, y + h,
+		x, y + h,
 	};
 	buffer = GX2RLockBufferEx(&position_buffer, 0);
 	if (buffer) {
