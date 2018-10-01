@@ -1,8 +1,29 @@
-#include "../../SDL_internal.h"
+/*
+  Simple DirectMedia Layer
+  Copyright (C) 2018-2018 Ash Logan <ash@heyquark.com>
+  Copyright (C) 2018-2018 rw-r-r-0644 <r.r.qwertyuiop.r.r@gmail.com>
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
 
 #if SDL_VIDEO_DRIVER_WIIU
 
 /* SDL internals */
+#include "../../SDL_internal.h"
 #include "../SDL_sysvideo.h"
 #include "SDL_version.h"
 #include "SDL_syswm.h"
@@ -25,6 +46,14 @@
 
 #include "texture_shader.h"
 
+static int WIIU_VideoInit(_THIS);
+static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
+static void WIIU_VideoQuit(_THIS);
+static void WIIU_PumpEvents(_THIS);
+static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch);
+static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects);
+static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window);
+
 #define WIIU_DATA "_SDL_WiiUData"
 #define SCREEN_WIDTH    1280
 #define SCREEN_HEIGHT   720
@@ -34,21 +63,6 @@ typedef struct
 	SDL_Surface *surface;
 	GX2Texture texture;
 } WIIU_WindowData;
-
-static int WIIU_VideoInit(_THIS);
-
-static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
-
-static void WIIU_VideoQuit(_THIS);
-
-static void WIIU_PumpEvents(_THIS);
-
-static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch);
-
-static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects);
-
-static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window);
-
 
 static const float position_vb[] =
 {
@@ -82,45 +96,6 @@ static GX2RBuffer tex_coord_buffer = {
 
 static WHBGfxShaderGroup group = { 0 };
 static GX2Sampler sampler = {0};
-
-
-static int WIIU_Available(void)
-{
-	return 1;
-}
-
-static void WIIU_DeleteDevice(SDL_VideoDevice *device)
-{
-	SDL_free(device);
-}
-
-static SDL_VideoDevice *WIIU_CreateDevice(int devindex)
-{
-	SDL_VideoDevice *device;
-
-	device = (SDL_VideoDevice*) SDL_calloc(1, sizeof(SDL_VideoDevice));
-	if(!device) {
-		SDL_OutOfMemory();
-		return NULL;
-	}
-
-	device->VideoInit = WIIU_VideoInit;
-	device->VideoQuit = WIIU_VideoQuit;
-	device->SetDisplayMode = WIIU_SetDisplayMode;
-	device->PumpEvents = WIIU_PumpEvents;
-	device->CreateWindowFramebuffer = WIIU_CreateWindowFramebuffer;
-	device->UpdateWindowFramebuffer = WIIU_UpdateWindowFramebuffer;
-	device->DestroyWindowFramebuffer = WIIU_DestroyWindowFramebuffer;
-
-	device->free = WIIU_DeleteDevice;
-
-	return device;
-}
-
-VideoBootStrap WIIU_bootstrap = {
-	"WiiU", "Video driver for Nintendo WiiU",
-	WIIU_Available, WIIU_CreateDevice
-};
 
 static int WIIU_VideoInit(_THIS)
 {
@@ -171,15 +146,6 @@ static void WIIU_VideoQuit(_THIS)
 	GX2RDestroyBufferEx(&tex_coord_buffer, 0);
 	WHBGfxShutdown();
 	WHBProcShutdown();
-}
-
-static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
-{
-	return 0;
-}
-
-static void WIIU_PumpEvents(_THIS)
-{
 }
 
 static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch)
@@ -267,5 +233,52 @@ static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window)
 	MEMFreeToDefaultHeap(data->texture.surface.image);
 	SDL_free(data);
 }
+
+static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
+{
+	return 0;
+}
+
+static void WIIU_PumpEvents(_THIS)
+{
+}
+
+static int WIIU_Available(void)
+{
+	return 1;
+}
+
+static void WIIU_DeleteDevice(SDL_VideoDevice *device)
+{
+	SDL_free(device);
+}
+
+static SDL_VideoDevice *WIIU_CreateDevice(int devindex)
+{
+	SDL_VideoDevice *device;
+
+	device = (SDL_VideoDevice*) SDL_calloc(1, sizeof(SDL_VideoDevice));
+	if(!device) {
+		SDL_OutOfMemory();
+		return NULL;
+	}
+
+	device->VideoInit = WIIU_VideoInit;
+	device->VideoQuit = WIIU_VideoQuit;
+	device->SetDisplayMode = WIIU_SetDisplayMode;
+	device->PumpEvents = WIIU_PumpEvents;
+	device->CreateWindowFramebuffer = WIIU_CreateWindowFramebuffer;
+	device->UpdateWindowFramebuffer = WIIU_UpdateWindowFramebuffer;
+	device->DestroyWindowFramebuffer = WIIU_DestroyWindowFramebuffer;
+
+	device->free = WIIU_DeleteDevice;
+
+	return device;
+}
+
+VideoBootStrap WIIU_bootstrap = {
+	"WiiU", "Video driver for Nintendo WiiU",
+	WIIU_Available, WIIU_CreateDevice
+};
 
 #endif /* SDL_VIDEO_DRIVER_WIIU */
