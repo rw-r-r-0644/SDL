@@ -20,10 +20,11 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
+#include "../../SDL_internal.h"
+
 #if SDL_VIDEO_DRIVER_WIIU
 
 /* SDL internals */
-#include "../../SDL_internal.h"
 #include "../SDL_sysvideo.h"
 #include "SDL_version.h"
 #include "SDL_syswm.h"
