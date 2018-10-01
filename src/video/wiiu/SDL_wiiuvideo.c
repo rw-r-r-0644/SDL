@@ -44,6 +44,7 @@
 #include <whb/gfx.h>
 #include <coreinit/memdefaultheap.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "texture_shader.h"
 
@@ -59,40 +60,33 @@ static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window);
 #define SCREEN_WIDTH    1280
 #define SCREEN_HEIGHT   720
 
+static const float tex_coord_vb[] =
+{
+	0.0f, 1.0f,
+	1.0f, 1.0f,
+	1.0f, 0.0f,
+	0.0f, 0.0f,
+};
+
 typedef struct
 {
 	SDL_Surface *surface;
 	GX2Texture texture;
 } WIIU_WindowData;
 
-static const float position_vb[] =
-{
-   -1.0f, -1.0f,
-    1.0f, -1.0f,
-    1.0f,  1.0f,
-   -1.0f,  1.0f,
+static GX2RBuffer tex_coord_buffer = {
+	GX2R_RESOURCE_BIND_VERTEX_BUFFER |
+	GX2R_RESOURCE_USAGE_CPU_READ |
+	GX2R_RESOURCE_USAGE_CPU_WRITE |
+	GX2R_RESOURCE_USAGE_GPU_READ,
+	2 * sizeof(float), 4, NULL
 };
 static GX2RBuffer position_buffer = {
 	GX2R_RESOURCE_BIND_VERTEX_BUFFER |
 	GX2R_RESOURCE_USAGE_CPU_READ |
 	GX2R_RESOURCE_USAGE_CPU_WRITE |
 	GX2R_RESOURCE_USAGE_GPU_READ,
-	2 * 4, 4, NULL
-};
-
-static const float tex_coord_vb[] =
-{
-   0.0f, 1.0f,
-   1.0f, 1.0f,
-   1.0f, 0.0f,
-   0.0f, 0.0f,
-};
-static GX2RBuffer tex_coord_buffer = {
-	GX2R_RESOURCE_BIND_VERTEX_BUFFER |
-	GX2R_RESOURCE_USAGE_CPU_READ |
-	GX2R_RESOURCE_USAGE_CPU_WRITE |
-	GX2R_RESOURCE_USAGE_GPU_READ,
-	2 * 4, 4, NULL
+	2 * sizeof(float), 4, NULL
 };
 
 static WHBGfxShaderGroup group = { 0 };
@@ -114,14 +108,13 @@ static int WIIU_VideoInit(_THIS)
 
 	// setup vertex position attribute
 	GX2RCreateBuffer(&position_buffer);
-	buffer = GX2RLockBufferEx(&position_buffer, 0);
-	memcpy(buffer, position_vb, position_buffer.elemSize * position_buffer.elemCount);
-	GX2RUnlockBufferEx(&position_buffer, 0);
 
 	// setup vertex texture coordinates attribute
 	GX2RCreateBuffer(&tex_coord_buffer);
 	buffer = GX2RLockBufferEx(&tex_coord_buffer, 0);
-	memcpy(buffer, tex_coord_vb, tex_coord_buffer.elemSize * tex_coord_buffer.elemCount);
+	if (buffer) {
+		memcpy(buffer, tex_coord_vb, tex_coord_buffer.elemSize * tex_coord_buffer.elemCount);
+	}
 	GX2RUnlockBufferEx(&tex_coord_buffer, 0);
 
 	// initialize a sampler
@@ -209,6 +202,20 @@ static void render_scene(WIIU_WindowData *data) {
 static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects)
 {
 	WIIU_WindowData *data = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_DATA);
+
+	float* buffer;
+	static const float position_vb[] =
+	{
+		-1.0f, -1.0f,
+		 1.0f, -1.0f,
+		 1.0f,  1.0f,
+		-1.0f,  1.0f,
+	};
+	buffer = GX2RLockBufferEx(&position_buffer, 0);
+	if (buffer) {
+		memcpy(buffer, position_vb, position_buffer.elemSize * position_buffer.elemCount);
+	}
+	GX2RUnlockBufferEx(&position_buffer, 0);
 
 	GX2Invalidate(GX2_INVALIDATE_MODE_CPU_TEXTURE, data->texture.surface.image, data->texture.surface.imageSize);
 
