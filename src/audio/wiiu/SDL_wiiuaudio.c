@@ -34,6 +34,7 @@
 
 #include <sndcore2/core.h>
 #include <sndcore2/voice.h>
+#include <sndcore2/drcvs.h>
 #include <coreinit/core.h>
 #include <coreinit/cache.h>
 #include <coreinit/thread.h>
@@ -78,6 +79,9 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
         };
         AXInitWithParams(&initparams);
     } else printf("DEBUG: AX already up?\n");
+
+/* Disable gamepad virtual surround (causes distortion) */
+    AXSetDRCVSMode(0);
 
 /*  Get a voice, top priority (we only need one) */
     this->hidden->voice = AXAcquireVoice(31, NULL, NULL);
