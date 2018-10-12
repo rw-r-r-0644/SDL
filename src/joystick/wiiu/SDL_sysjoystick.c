@@ -144,7 +144,7 @@ SDL_SYS_JoystickUpdate(SDL_Joystick *joystick)
 			return;
 
 		// touchscreen
-		VPADGetTPCalibratedPoint(VPAD_CHAN_0, &tpdata, &vpad.tpFiltered1);
+		VPADGetTPCalibratedPoint(VPAD_CHAN_0, &tpdata, &vpad.tpNormal);
 		if (tpdata.touched) {
 			// Send an initial touch
 			SDL_SendTouch(0, 0, SDL_TRUE,
