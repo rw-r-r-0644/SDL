@@ -54,4 +54,16 @@ WIIU_GetOutputSize(SDL_Renderer * renderer, int *w, int *h) {
     SDL_GetWindowSize(renderer->window, w, h);
 }
 
+// We handle all viewport changes in the render functions and shaders, so we
+// don't actually have to do anything here. SDL still requires we implement it.
+static int WIIU_UpdateViewport(SDL_Renderer * renderer) {
+    return 0;
+}
+
+// Ideally this should change the GX2SetScissor values, but SetRenderTarget
+// needs refactoring first or these get overwritten.
+static int WIIU_UpdateClipRect(SDL_Renderer * renderer) {
+    return 0;
+}
+
 #endif //SDL_VIDEO_RENDER_WIIU

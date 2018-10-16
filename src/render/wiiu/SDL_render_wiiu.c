@@ -159,6 +159,9 @@ WIIU_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
     // Update context state
     GX2SetContextState(&data->ctx);
     GX2SetColorBuffer(&data->cbuf, GX2_RENDER_TARGET_0);
+    // These may be unnecessary - see SDL_render.c: SDL_SetRenderTarget's calls
+    // to UpdateViewport and UpdateClipRect. TODO for once the render is
+    // basically working.
     GX2SetViewport(0, 0, (float)data->cbuf.surface.width, (float)data->cbuf.surface.height, 0.0f, 1.0f);
     GX2SetScissor(0, 0, (float)data->cbuf.surface.width, (float)data->cbuf.surface.height);
 
@@ -172,7 +175,7 @@ WIIU_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     GX2Texture *wiiu_tex = (GX2Texture*) texture->driverdata;
 
-    //TODO: Move texCoord/pos math to shader
+    //TODO: Move texCoord/pos math to shader / GX2SetViewport
     float transform_x, transform_y;
     if (renderer->viewport.x || renderer->viewport.y) {
         transform_x = (((renderer->viewport.x + dstrect->x) / (float)data->cbuf.surface.width) * 2.0f)-1.0f;
