@@ -101,9 +101,9 @@ typedef struct
     GX2Sampler sampler;
     GX2ColorBuffer cbuf;
     GX2ContextState ctx;
-	GX2RBuffer texPositionBuffer;
-	GX2RBuffer texCoordBuffer;
-	GX2RBuffer texColourBuffer;
+    GX2RBuffer texPositionBuffer;
+    GX2RBuffer texCoordBuffer;
+    GX2RBuffer texColourBuffer;
 } WIIU_RenderData;
 
 static Uint32
@@ -177,7 +177,7 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->driverdata = data;
     renderer->window = window;
 
-	// Setup texture shader attribute buffers
+    // Setup texture shader attribute buffers
     data->texPositionBuffer.flags =
     data->texCoordBuffer.flags =
     data->texColourBuffer.flags =
@@ -191,12 +191,12 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
     data->texPositionBuffer.elemCount =
     data->texCoordBuffer.elemCount =
     data->texColourBuffer.elemCount = 4;
-    
+
     GX2RCreateBuffer(&data->texPositionBuffer);
     GX2RCreateBuffer(&data->texCoordBuffer);
     GX2RCreateBuffer(&data->texColourBuffer);
 
-	// Prepare texture color buffer data (it's costant between textures)
+    // Prepare texture color buffer data (it's costant between textures)
     float aColourDefault[] = {
         1.0f, 1.0f, 1.0f, 1.0f,
         1.0f, 1.0f, 1.0f, 1.0f,
@@ -214,7 +214,7 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
     memcpy(&data->cbuf.surface, &wdata->texture.surface, sizeof(GX2Surface));
     data->cbuf.surface.use = GX2_SURFACE_USE_TEXTURE | GX2_SURFACE_USE_COLOR_BUFFER;
     data->cbuf.viewNumSlices = 1;
-    GX2InitColorBufferRegs(&data->cbuf);    
+    GX2InitColorBufferRegs(&data->cbuf);
 
     // Setup context state
     GX2SetupContextStateEx(&data->ctx, TRUE);
@@ -238,7 +238,7 @@ WIIU_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
         memcpy(&data->cbuf.surface, &wdata->texture.surface, sizeof(GX2Surface));
         data->cbuf.surface.use = GX2_SURFACE_USE_TEXTURE | GX2_SURFACE_USE_COLOR_BUFFER;
         data->cbuf.viewNumSlices = 1;
-        GX2InitColorBufferRegs(&data->cbuf);    
+        GX2InitColorBufferRegs(&data->cbuf);
 
         // Update context state
         GX2SetContextState(&data->ctx);
@@ -312,7 +312,7 @@ WIIU_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
         GX2Texture *wiiu_tex = (GX2Texture *) texture->driverdata;
         target = wiiu_tex->surface;
     } else {
-        // Set window texture as target     
+        // Set window texture as target
         WIIU_WindowData *wdata = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_WINDOW_DATA);
         target = &wdata->texture.surface;
     }
@@ -337,10 +337,10 @@ static int
 WIIU_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
                 const SDL_Rect * srcrect, const SDL_FRect * dstrect)
 {
-	WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     GX2Texture *wiiu_tex = (GX2Texture*) texture->driverdata;
 
-	//TODO: Move texCoord/pos math to shader
+    //TODO: Move texCoord/pos math to shader
     float transform_x, transform_y;
     if (renderer->viewport.x || renderer->viewport.y) {
         transform_x = (((renderer->viewport.x + dstrect->x) / (float)data->cbuf.surface.width) * 2.0f)-1.0f;
@@ -348,7 +348,7 @@ WIIU_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     } else {
         transform_x = ((dstrect->x / (float)data->cbuf.surface.width) * 2.0f)-1.0f;
         transform_y = ((dstrect->y / (float)data->cbuf.surface.height) * 2.0f)-1.0f;
-    }    
+    }
     float transform_width = (dstrect->w / (float)data->cbuf.surface.width) * 2.0f;
     float transform_height = (dstrect->h / (float)data->cbuf.surface.height) * 2.0f;
 
@@ -395,20 +395,20 @@ WIIU_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2RSetAttributeBuffer(&data->texCoordBuffer, 1, data->texCoordBuffer.elemSize, 0);
     GX2RSetAttributeBuffer(&data->texColourBuffer, 2, data->texColourBuffer.elemSize, 0);
 
-	GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);    
+    GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
 }
 
 static void
 WIIU_RenderPresent(SDL_Renderer * renderer)
 {
-	WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-	SDL_Window *window = renderer->window;
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    SDL_Window *window = renderer->window;
 
-	GX2Invalidate(GX2_INVALIDATE_MODE_CPU | GX2_INVALIDATE_MODE_TEXTURE, data->cbuf.surface.image, data->cbuf.surface.imageSize);
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU | GX2_INVALIDATE_MODE_TEXTURE, data->cbuf.surface.image, data->cbuf.surface.imageSize);
 
-	if (window) {
-		SDL_UpdateWindowSurface(window);
-	}
+    if (window) {
+        SDL_UpdateWindowSurface(window);
+    }
 }
 
 
