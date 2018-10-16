@@ -32,6 +32,7 @@
 #include "SDL_events.h"
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_keyboard_c.h"
+#include "SDL_wiiuvideo.h"
 
 #include <gfd.h>
 #include <gx2/draw.h>
@@ -56,7 +57,6 @@ static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *forma
 static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects);
 static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window);
 
-#define WIIU_DATA "_SDL_WiiUData"
 #define SCREEN_WIDTH    1280
 #define SCREEN_HEIGHT   720
 
@@ -67,12 +67,6 @@ static const float tex_coord_vb[] =
 	1.0f, 0.0f,
 	0.0f, 0.0f,
 };
-
-typedef struct
-{
-	SDL_Surface *surface;
-	GX2Texture texture;
-} WIIU_WindowData;
 
 static GX2RBuffer tex_coord_buffer = {
 	GX2R_RESOURCE_BIND_VERTEX_BUFFER |
@@ -177,7 +171,7 @@ static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *forma
 	*pixels = data->surface->pixels;
 	*pitch = data->surface->pitch;
 
-	SDL_SetWindowData(window, WIIU_DATA, data);
+	SDL_SetWindowData(window, WIIU_WINDOW_DATA, data);
 
 	// inform SDL we're ready to accept inputs
 	SDL_SetKeyboardFocus(window);
@@ -201,7 +195,7 @@ static void render_scene(WIIU_WindowData *data) {
 
 static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects)
 {
-	WIIU_WindowData *data = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_DATA);
+	WIIU_WindowData *data = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_WINDOW_DATA);
 	float* buffer;
 	int int_x, int_y, int_w, int_h;
 	float x, y, w, h;
@@ -257,7 +251,7 @@ static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rec
 
 static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window)
 {
-	WIIU_WindowData *data = (WIIU_WindowData*) SDL_GetWindowData(window, WIIU_DATA);
+	WIIU_WindowData *data = (WIIU_WindowData*) SDL_GetWindowData(window, WIIU_WINDOW_DATA);
 	SDL_FreeSurface(data->surface);
 	MEMFreeToDefaultHeap(data->texture.surface.image);
 	SDL_free(data);
