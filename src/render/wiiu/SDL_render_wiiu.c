@@ -62,12 +62,14 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
         return NULL;
     }
 
+    // See sdl_render_wiiu.h for explanations of commented-out functions
+
     renderer->WindowEvent = WIIU_WindowEvent;
     renderer->GetOutputSize = WIIU_GetOutputSize;
     renderer->CreateTexture = WIIU_CreateTexture;
-    renderer->SetTextureColorMod = WIIU_SetTextureColorMod;
-    renderer->SetTextureAlphaMod = WIIU_SetTextureAlphaMod;
-    renderer->SetTextureBlendMode = WIIU_SetTextureBlendMode;
+    //renderer->SetTextureColorMod = WIIU_SetTextureColorMod;
+    //renderer->SetTextureAlphaMod = WIIU_SetTextureAlphaMod;
+    //renderer->SetTextureBlendMode = WIIU_SetTextureBlendMode;
     renderer->UpdateTexture = WIIU_UpdateTexture;
     renderer->LockTexture = WIIU_LockTexture;
     renderer->UnlockTexture = WIIU_UnlockTexture;
