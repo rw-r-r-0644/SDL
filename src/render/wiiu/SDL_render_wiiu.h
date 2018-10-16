@@ -48,12 +48,14 @@ static void WIIU_WindowEvent(SDL_Renderer * renderer,
                              const SDL_WindowEvent *event);
 static int WIIU_GetOutputSize(SDL_Renderer * renderer, int *w, int *h);
 static int WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture);
-static int WIIU_SetTextureColorMod(SDL_Renderer * renderer,
+// SDL changes colour/alpha/blend values internally, this is just to notify us.
+// We don't care yet. TODO: could update GX2RBuffers less frequently with these?
+/*static int WIIU_SetTextureColorMod(SDL_Renderer * renderer,
                                    SDL_Texture * texture);
 static int WIIU_SetTextureAlphaMod(SDL_Renderer * renderer,
                                    SDL_Texture * texture);
 static int WIIU_SetTextureBlendMode(SDL_Renderer * renderer,
-                                    SDL_Texture * texture);
+                                    SDL_Texture * texture);*/
 static int WIIU_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                               const SDL_Rect * rect, const void *pixels,
                               int pitch);
