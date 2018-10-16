@@ -246,6 +246,14 @@ WIIU_RenderPresent(SDL_Renderer * renderer)
     }
 }
 
+static int
+WIIU_RenderClear(SDL_Renderer * renderer)
+{
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    GX2ClearColor(&data->cbuf, renderer->r, renderer->g, renderer->b, renderer->a);
+    return 0;
+}
+
 SDL_RenderDriver WIIU_RenderDriver = {
     .CreateRenderer = WIIU_CreateRenderer,
     .info = {

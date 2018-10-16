@@ -28,6 +28,7 @@
 #include "../SDL_sysrender.h"
 
 //Utility/helper functions
+static Uint32 PixelFormatByteSizeWIIU(Uint32 format);
 static GX2SurfaceFormat PixelFormatToWIIUFMT(Uint32 format);
 static Uint32 TextureNextPow2(Uint32 w);
 
