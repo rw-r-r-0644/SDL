@@ -23,6 +23,7 @@
 
 #if SDL_VIDEO_RENDER_WIIU
 
+#include "../../video/wiiu/wiiuvideo.h"
 #include "../SDL_sysrender.h"
 #include "SDL_hints.h"
 
@@ -73,28 +74,22 @@ static void WIIU_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture);
 static void WIIU_DestroyRenderer(SDL_Renderer * renderer);
 
 SDL_RenderDriver WIIU_RenderDriver = {
-    WIIU_CreateRenderer,
-    {
-     "WiiU GX2",
-     SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE,
-     5,
-     {
-      SDL_PIXELFORMAT_RGBA8888,
-      SDL_PIXELFORMAT_RGBA4444,
-      SDL_PIXELFORMAT_ABGR1555,
-      SDL_PIXELFORMAT_RGBA5551,
-      SDL_PIXELFORMAT_RGB565,
-     },
-     0,
-     0}
+    .CreateRenderer = WIIU_CreateRenderer,
+    .info = {
+        .name = "WiiU GX2",
+        .flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE,
+        .num_texture_formats = 5,
+        .texture_formats = {
+            SDL_PIXELFORMAT_RGBA8888,
+            SDL_PIXELFORMAT_RGBA4444,
+            SDL_PIXELFORMAT_ABGR1555,
+            SDL_PIXELFORMAT_RGBA5551,
+            SDL_PIXELFORMAT_RGB565,
+        },
+        .max_texture_width = 0,
+        .max_texture_height = 0,
+    },
 };
-
-#define WIIU_WINDOW_DATA "_SDL_WiiUData"
-typedef struct
-{
-    SDL_Surface *surface;
-    GX2Texture texture;
-} WIIU_WindowData;
 
 typedef struct
 {
@@ -249,7 +244,7 @@ WIIU_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 }
 
 
-GX2SurfaceFormat
+static GX2SurfaceFormat
 PixelFormatToWIIUFMT(Uint32 format)
 {
     switch (format) {
@@ -289,8 +284,8 @@ WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     wiiu_tex->compMap = 0x00010203; //comment?
 
     GX2CalcSurfaceSizeAndAlignment(&wiiu_tex->surface);
-    texture->surface.image = memalign(wiiu_tex->surface.alignment, wiiu_tex->surface.imageSize);
-    if(!texture->surface.image)
+    wiiu_tex->surface.image = memalign(wiiu_tex->surface.alignment, wiiu_tex->surface.imageSize);
+    if(!wiiu_tex->surface.image)
     {
         SDL_free(wiiu_tex);
         return SDL_OutOfMemory();
