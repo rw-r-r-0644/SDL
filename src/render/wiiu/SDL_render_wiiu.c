@@ -130,16 +130,6 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
     return renderer;
 }
 
-static void
-WIIU_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
-{
-    if (event->event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-        // Re-init the colour buffer etc. for new window size
-        // TODO check: what if we're rendering to a texture when this happens?
-        WIIU_SetRenderTarget(renderer, NULL);
-    }
-}
-
 static int
 WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
