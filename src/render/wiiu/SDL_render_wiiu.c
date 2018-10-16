@@ -42,17 +42,10 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
     SDL_Surface *surface
     SDL_Renderer *renderer;
     WIIU_RenderData *data;
-    WIIU_WindowData *wdata;
 
     surface = SDL_GetWindowSurface(window);
     if (!surface) {
         SDL_SetError("Can't create renderer for NULL surface");
-        return NULL;
-    }
-
-    wdata = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_WINDOW_DATA);
-    if (!surface) {
-        SDL_SetError("Can't access window data");
         return NULL;
     }
 
@@ -128,18 +121,11 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
     // Setup sampler
     GX2InitSampler(&data->sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_LINEAR);
 
-    // Setup color buffer
-    memcpy(&data->cbuf.surface, &wdata->texture.surface, sizeof(GX2Surface));
-    data->cbuf.surface.use = GX2_SURFACE_USE_TEXTURE | GX2_SURFACE_USE_COLOR_BUFFER;
-    data->cbuf.viewNumSlices = 1;
-    GX2InitColorBufferRegs(&data->cbuf);
-
-    // Setup context state
+    // Create a fresh context state
     GX2SetupContextStateEx(&data->ctx, TRUE);
-    GX2SetContextState(&data->ctx);
-    GX2SetColorBuffer(&data->cbuf, GX2_RENDER_TARGET_0);
-    GX2SetViewport(0, 0, (float)data->cbuf.surface.width, (float)data->cbuf.surface.height, 0.0f, 1.0f);
-    GX2SetScissor(0, 0, (float)data->cbuf.surface.width, (float)data->cbuf.surface.height);
+
+    // Setup colour buffer, rendering to the window
+    WIIU_SetRenderTarget(renderer, NULL);
 
     return renderer;
 }
@@ -147,22 +133,10 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
 static void
 WIIU_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 {
-    WIIU_RenderData *data = (SW_RenderData *) renderer->driverdata;
-    WIIU_WindowData *wdata = (WIIU_WindowData *) SDL_GetWindowData(renderer->window, WIIU_WINDOW_DATA);
-
     if (event->event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-        // Update color buffer
-        memset(&data->cbuf, 0, sizeof(data->cbuf));
-        memcpy(&data->cbuf.surface, &wdata->texture.surface, sizeof(GX2Surface));
-        data->cbuf.surface.use = GX2_SURFACE_USE_TEXTURE | GX2_SURFACE_USE_COLOR_BUFFER;
-        data->cbuf.viewNumSlices = 1;
-        GX2InitColorBufferRegs(&data->cbuf);
-
-        // Update context state
-        GX2SetContextState(&data->ctx);
-        GX2SetColorBuffer(&data->cbuf, GX2_RENDER_TARGET_0);
-        GX2SetViewport(0, 0, (float)data->cbuf.surface.width, (float)data->cbuf.surface.height, 0.0f, 1.0f);
-        GX2SetScissor(0, 0, (float)data->cbuf.surface.width, (float)data->cbuf.surface.height);
+        // Re-init the colour buffer etc. for new window size
+        // TODO check: what if we're rendering to a texture when this happens?
+        WIIU_SetRenderTarget(renderer, NULL);
     }
 }
 
@@ -171,7 +145,7 @@ WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     GX2Texture *wiiu_tex = (GX2Texture*) SDL_calloc(1, sizeof(*wiiu_tex));
     if (!wiiu_tex)
-        return -1;
+        return SDL_OutOfMemory();
 
     wiiu_tex->surface.width = TextureNextPow2(texture->w);
     wiiu_tex->surface.height = TextureNextPow2(texture->h);
@@ -183,7 +157,7 @@ WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     wiiu_tex->surface.mipLevels = 1;
     wiiu_tex->viewNumMips = 1;
     wiiu_tex->viewNumSlices = 1;
-    wiiu_tex->compMap = 0x00010203; //comment?
+    wiiu_tex->compMap = 0x00010203;
 
     GX2CalcSurfaceSizeAndAlignment(&wiiu_tex->surface);
     wiiu_tex->surface.image = memalign(wiiu_tex->surface.alignment, wiiu_tex->surface.imageSize);
@@ -319,6 +293,7 @@ TextureNextPow2(Uint32 w)
     return n;
 }
 
+//TODO: This could return a compMap to support stuff like ARGB or ABGR
 static GX2SurfaceFormat
 PixelFormatToWIIUFMT(Uint32 format)
 {
