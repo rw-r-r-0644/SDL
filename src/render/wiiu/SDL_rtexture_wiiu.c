@@ -65,6 +65,33 @@ WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     return 0;
 }
 
+// Somewhat adapted from SDL_render.c: SDL_LockTextureNative
+// The app basically wants a pointer to a particular rectangle as well as
+// write access to it. We can do that without any special graphics code
+static int WIIU_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+                            const SDL_Rect * rect, void **pixels, int *pitch)
+{
+    GX2Texture *wiiu_tex = (GX2Texture *) texture->driverdata;
+
+    // Calculate pointer to first pixel in rect
+    *pixels = (void *) ((Uint8 *) wiiu_tex->surface.image +
+                        rect->y * wiiu_tex->surface.pitch +
+                        rect->x * SDL_BYTESPERPIXEL(texture->format));
+    *pitch = wiiu_tex->surface.pitch;
+
+    // Not sure we even need to bother keeping track of this
+    texture->locked_rect = *rect;
+    return 0;
+}
+
+static void WIIU_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+{
+    GX2Texture *wiiu_tex = (GX2Texture *) texture->driverdata;
+    // TODO check this is actually needed
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU | GX2_INVALIDATE_MODE_TEXTURE,
+        wiiu_tex->surface.image, wiiu_tex->surface.imageSize);
+}
+
 static Uint32
 TextureNextPow2(Uint32 w)
 {
