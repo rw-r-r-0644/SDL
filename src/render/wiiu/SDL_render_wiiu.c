@@ -131,37 +131,6 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
 }
 
 static int
-WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
-{
-    GX2Texture *wiiu_tex = (GX2Texture*) SDL_calloc(1, sizeof(*wiiu_tex));
-    if (!wiiu_tex)
-        return SDL_OutOfMemory();
-
-    wiiu_tex->surface.width = TextureNextPow2(texture->w);
-    wiiu_tex->surface.height = TextureNextPow2(texture->h);
-    wiiu_tex->surface.format = PixelFormatToWIIUFMT(texture->format);
-    wiiu_tex->surface.depth = 1; //?
-    wiiu_tex->surface.dim = GX2_SURFACE_DIM_TEXTURE_2D;
-    wiiu_tex->surface.tileMode = GX2_TILE_MODE_LINEAR_ALIGNED;
-    wiiu_tex->surface.use = GX2_SURFACE_USE_TEXTURE;
-    wiiu_tex->surface.mipLevels = 1;
-    wiiu_tex->viewNumMips = 1;
-    wiiu_tex->viewNumSlices = 1;
-    wiiu_tex->compMap = 0x00010203;
-
-    GX2CalcSurfaceSizeAndAlignment(&wiiu_tex->surface);
-    wiiu_tex->surface.image = memalign(wiiu_tex->surface.alignment, wiiu_tex->surface.imageSize);
-    if(!wiiu_tex->surface.image)
-    {
-        SDL_free(wiiu_tex);
-        return SDL_OutOfMemory();
-    }
-    texture->driverdata = wiiu_tex;
-
-    return 0;
-}
-
-static int
 WIIU_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
@@ -270,38 +239,6 @@ WIIU_RenderPresent(SDL_Renderer * renderer)
     if (window) {
         SDL_UpdateWindowSurface(window);
     }
-}
-
-static Uint32
-TextureNextPow2(Uint32 w)
-{
-    if(w == 0)
-        return 0;
-    Uint32 n = 2;
-    while(w > n)
-        n <<= 1;
-    return n;
-}
-
-//TODO: This could return a compMap to support stuff like ARGB or ABGR
-static GX2SurfaceFormat
-PixelFormatToWIIUFMT(Uint32 format)
-{
-    switch (format) {
-        case SDL_PIXELFORMAT_RGBA8888:
-            return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
-        case SDL_PIXELFORMAT_RGBA4444:
-            return GX2_SURFACE_FORMAT_UNORM_R4_G4_B4_A4;
-        case SDL_PIXELFORMAT_ABGR1555:
-            return GX2_SURFACE_FORMAT_UNORM_A1_B5_G5_R5;
-        case SDL_PIXELFORMAT_RGBA5551:
-            return GX2_SURFACE_FORMAT_UNORM_R5_G5_B5_A1;
-        case SDL_PIXELFORMAT_RGB565:
-            return GX2_SURFACE_FORMAT_UNORM_R5_G6_B5;
-        default:
-            return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
-    }
-    return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
 }
 
 SDL_RenderDriver WIIU_RenderDriver = {
