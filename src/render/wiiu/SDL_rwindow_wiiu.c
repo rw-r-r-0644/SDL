@@ -41,8 +41,17 @@ WIIU_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
     if (event->event == SDL_WINDOWEVENT_SIZE_CHANGED) {
         // Re-init the colour buffer etc. for new window size
         // TODO check: what if we're rendering to a texture when this happens?
+        // SDL may handle this already, see SDL_render.c: SDL_RendererEventWatch
         WIIU_SetRenderTarget(renderer, NULL);
     }
+}
+
+// We always output at whatever res the window is.
+// This may need to change if SDL_wiiuvideo is ever folded into SDL_render -
+// see SDL_*WindowTexture from SDL_video.c for how this could be done
+static int
+WIIU_GetOutputSize(SDL_Renderer * renderer, int *w, int *h) {
+    SDL_GetWindowSize(renderer->window, w, h);
 }
 
 #endif //SDL_VIDEO_RENDER_WIIU
