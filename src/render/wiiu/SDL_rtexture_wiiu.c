@@ -92,6 +92,32 @@ static void WIIU_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         wiiu_tex->surface.image, wiiu_tex->surface.imageSize);
 }
 
+static int
+WIIU_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+                 const SDL_Rect * rect, const void *pixels, int pitch)
+{
+    GX2Texture *wiiu_tex = (GX2Texture *) texture->driverdata;
+    Uint32 BytesPerPixel;
+    Uint8 *src, *dst;
+    int row;
+    size_t length;
+
+    BytesPerPixel = PixelFormatByteSizeWIIU(texture->format);
+
+    src = (Uint8 *) pixels;
+    dst = (Uint8 *) wiiu_tex->surface.image +
+                        rect->y * wiiu_tex->surface.pitch +
+                        rect->x * BytesPerPixel;
+    length = rect->w * BytesPerPixel;
+    for (row = 0; row < rect->h; ++row) {
+        SDL_memcpy(dst, src, length);
+        src += pitch;
+        dst += wiiu_tex->surface.pitch;
+    }
+
+    return 0;
+}
+
 static Uint32
 TextureNextPow2(Uint32 w)
 {
@@ -101,6 +127,22 @@ TextureNextPow2(Uint32 w)
     while(w > n)
         n <<= 1;
     return n;
+}
+
+static Uint32
+PixelFormatByteSizeWIIU(Uint32 format)
+{
+    switch (format) {
+        case SDL_PIXELFORMAT_RGBA4444:
+        case SDL_PIXELFORMAT_ABGR1555:
+        case SDL_PIXELFORMAT_RGBA5551:
+        case SDL_PIXELFORMAT_RGB565:
+            return 2;
+        case SDL_PIXELFORMAT_RGBA8888:
+        default:
+            return 4;
+    }
+    return 4;
 }
 
 //TODO: This could return a compMap to support stuff like ARGB or ABGR
