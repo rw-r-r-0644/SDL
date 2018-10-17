@@ -35,8 +35,7 @@
 #include <string.h>
 #include <math.h>
 
-static void
-WIIU_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
+void WIIU_SDL_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 {
     if (event->event == SDL_WINDOWEVENT_SIZE_CHANGED) {
         // Re-init the colour buffer etc. for new window size
@@ -49,20 +48,19 @@ WIIU_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 // We always output at whatever res the window is.
 // This may need to change if SDL_wiiuvideo is ever folded into SDL_render -
 // see SDL_*WindowTexture from SDL_video.c for how this could be done
-static int
-WIIU_GetOutputSize(SDL_Renderer * renderer, int *w, int *h) {
+int WIIU_SDL_GetOutputSize(SDL_Renderer * renderer, int *w, int *h) {
     SDL_GetWindowSize(renderer->window, w, h);
 }
 
 // We handle all viewport changes in the render functions and shaders, so we
 // don't actually have to do anything here. SDL still requires we implement it.
-static int WIIU_UpdateViewport(SDL_Renderer * renderer) {
+int WIIU_SDL_UpdateViewport(SDL_Renderer * renderer) {
     return 0;
 }
 
 // Ideally this should change the GX2SetScissor values, but SetRenderTarget
 // needs refactoring first or these get overwritten.
-static int WIIU_UpdateClipRect(SDL_Renderer * renderer) {
+int WIIU_SDL_UpdateClipRect(SDL_Renderer * renderer) {
     return 0;
 }
 

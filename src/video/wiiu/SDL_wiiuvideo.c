@@ -47,7 +47,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "texture_shader.h"
+#include "wiiu_shaders.h"
 
 static int WIIU_VideoInit(_THIS);
 static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
@@ -83,7 +83,6 @@ static GX2RBuffer position_buffer = {
 	2 * sizeof(float), 4, NULL
 };
 
-static WHBGfxShaderGroup group = { 0 };
 static GX2Sampler sampler = {0};
 
 static int WIIU_VideoInit(_THIS)
@@ -95,10 +94,7 @@ static int WIIU_VideoInit(_THIS)
 	WHBGfxInit();
 
 	// setup shader
-	WHBGfxLoadGFDShaderGroup(&group, 0, texture_shader_gsh);
-	WHBGfxInitShaderAttribute(&group, "position", 0, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32);
-	WHBGfxInitShaderAttribute(&group, "tex_coord_in", 1, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32);
-	WHBGfxInitFetchShader(&group);
+	wiiuInitTextureShader();
 
 	// setup vertex position attribute
 	GX2RCreateBuffer(&position_buffer);
@@ -132,6 +128,7 @@ static void WIIU_VideoQuit(_THIS)
 {
 	GX2RDestroyBufferEx(&position_buffer, 0);
 	GX2RDestroyBufferEx(&tex_coord_buffer, 0);
+    wiiuFreeTextureShader();
 	WHBGfxShutdown();
 	WHBProcShutdown();
 }
@@ -181,14 +178,12 @@ static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *forma
 
 static void render_scene(WIIU_WindowData *data) {
 	WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	GX2SetFetchShader(&group.fetchShader);
-	GX2SetVertexShader(group.vertexShader);
-	GX2SetPixelShader(group.pixelShader);
+	wiiuSetTextureShader();
 	GX2RSetAttributeBuffer(&position_buffer, 0, position_buffer.elemSize, 0);
 	GX2RSetAttributeBuffer(&tex_coord_buffer, 1, tex_coord_buffer.elemSize, 0);
 
-	GX2SetPixelTexture(&data->texture, group.pixelShader->samplerVars[0].location);
-	GX2SetPixelSampler(&sampler, group.pixelShader->samplerVars[0].location);
+	GX2SetPixelTexture(&data->texture, wiiuTextureShader.pixelShader->samplerVars[0].location);
+	GX2SetPixelSampler(&sampler, wiiuTextureShader.pixelShader->samplerVars[0].location);
 
 	GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
 }

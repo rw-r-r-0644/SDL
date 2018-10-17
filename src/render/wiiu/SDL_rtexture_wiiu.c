@@ -34,8 +34,7 @@
 #include <string.h>
 #include <math.h>
 
-static int
-WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     GX2Texture *wiiu_tex = (GX2Texture*) SDL_calloc(1, sizeof(*wiiu_tex));
     if (!wiiu_tex)
@@ -68,8 +67,8 @@ WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 // Somewhat adapted from SDL_render.c: SDL_LockTextureNative
 // The app basically wants a pointer to a particular rectangle as well as
 // write access to it. We can do that without any special graphics code
-static int WIIU_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
-                            const SDL_Rect * rect, void **pixels, int *pitch)
+int WIIU_SDL_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+                         const SDL_Rect * rect, void **pixels, int *pitch)
 {
     GX2Texture *wiiu_tex = (GX2Texture *) texture->driverdata;
 
@@ -84,7 +83,7 @@ static int WIIU_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     return 0;
 }
 
-static void WIIU_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+void WIIU_SDL_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     GX2Texture *wiiu_tex = (GX2Texture *) texture->driverdata;
     // TODO check this is actually needed
@@ -92,9 +91,8 @@ static void WIIU_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         wiiu_tex->surface.image, wiiu_tex->surface.imageSize);
 }
 
-static int
-WIIU_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
-                 const SDL_Rect * rect, const void *pixels, int pitch)
+int WIIU_SDL_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+                           const SDL_Rect * rect, const void *pixels, int pitch)
 {
     GX2Texture *wiiu_tex = (GX2Texture *) texture->driverdata;
     Uint32 BytesPerPixel;
@@ -118,52 +116,10 @@ WIIU_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     return 0;
 }
 
-static Uint32
-TextureNextPow2(Uint32 w)
+void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    if(w == 0)
-        return 0;
-    Uint32 n = 2;
-    while(w > n)
-        n <<= 1;
-    return n;
-}
-
-static Uint32
-PixelFormatByteSizeWIIU(Uint32 format)
-{
-    switch (format) {
-        case SDL_PIXELFORMAT_RGBA4444:
-        case SDL_PIXELFORMAT_ABGR1555:
-        case SDL_PIXELFORMAT_RGBA5551:
-        case SDL_PIXELFORMAT_RGB565:
-            return 2;
-        case SDL_PIXELFORMAT_RGBA8888:
-        default:
-            return 4;
-    }
-    return 4;
-}
-
-//TODO: This could return a compMap to support stuff like ARGB or ABGR
-static GX2SurfaceFormat
-PixelFormatToWIIUFMT(Uint32 format)
-{
-    switch (format) {
-        case SDL_PIXELFORMAT_RGBA8888:
-            return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
-        case SDL_PIXELFORMAT_RGBA4444:
-            return GX2_SURFACE_FORMAT_UNORM_R4_G4_B4_A4;
-        case SDL_PIXELFORMAT_ABGR1555:
-            return GX2_SURFACE_FORMAT_UNORM_A1_B5_G5_R5;
-        case SDL_PIXELFORMAT_RGBA5551:
-            return GX2_SURFACE_FORMAT_UNORM_R5_G5_B5_A1;
-        case SDL_PIXELFORMAT_RGB565:
-            return GX2_SURFACE_FORMAT_UNORM_R5_G6_B5;
-        default:
-            return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
-    }
-    return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+    GX2Texture *wiiu_tex = (GX2Texture *) texture->driverdata;
+    SDL_Free(wiiu_tex);
 }
 
 #endif //SDL_VIDEO_RENDER_WIIU

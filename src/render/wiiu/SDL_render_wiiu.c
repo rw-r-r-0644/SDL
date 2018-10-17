@@ -36,18 +36,11 @@
 
 /* SDL surface based renderer implementation */
 
-SDL_Renderer *
-WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
+SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
 {
     SDL_Surface *surface
     SDL_Renderer *renderer;
     WIIU_RenderData *data;
-
-    surface = SDL_GetWindowSurface(window);
-    if (!surface) {
-        SDL_SetError("Can't create renderer for NULL surface");
-        return NULL;
-    }
 
     renderer = (SDL_Renderer *) SDL_calloc(1, sizeof(*renderer));
     if (!renderer) {
@@ -90,35 +83,31 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->driverdata = data;
     renderer->window = window;
 
+    // Prepare shaders
+    wiiuInitTextureShader();
+    wiiuInitColorShader();
+
+    // List of attibutes to free after render
+    data->listfree = NULL;
+
     // Setup texture shader attribute buffers
     data->texPositionBuffer.flags =
     data->texCoordBuffer.flags =
-    data->texColourBuffer.flags =
         GX2R_RESOURCE_BIND_VERTEX_BUFFER |
         GX2R_RESOURCE_USAGE_CPU_READ |
         GX2R_RESOURCE_USAGE_CPU_WRITE |
         GX2R_RESOURCE_USAGE_GPU_READ;
-    data->texPositionBuffer.elemSize = sizeof(float) * 3;
+    data->texPositionBuffer.elemSize = sizeof(float) * 2;
     data->texCoordBuffer.elemSize = sizeof(float) * 2;
-    data->texColourBuffer.elemSize = sizeof(float) * 4;
     data->texPositionBuffer.elemCount =
-    data->texCoordBuffer.elemCount =
-    data->texColourBuffer.elemCount = 4;
+    data->texCoordBuffer.elemCount = 4;
 
     GX2RCreateBuffer(&data->texPositionBuffer);
     GX2RCreateBuffer(&data->texCoordBuffer);
-    GX2RCreateBuffer(&data->texColourBuffer);
 
-    // Prepare texture color buffer data (it's costant between textures)
-    float aColourDefault[] = {
-        1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f,
-    };
-    GX2RLockBufferEx(&data->texColourBuffer, 0);
-    memcpy(data->texColourBuffer.buffer, aColourDefault, data->texColourBuffer.elemCount * data->texColourBuffer.elemSize);
-    GX2RUnlockBufferEx(&data->texColourBuffer, 0);
+    // Setup line and point size
+    GX2SetLineWidth(1.0f);
+    GX2SetPointSize(1.0f, 1.0f);
 
     // Setup sampler
     GX2InitSampler(&data->sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_LINEAR);
@@ -132,8 +121,7 @@ WIIU_CreateRenderer(SDL_Window * window, Uint32 flags)
     return renderer;
 }
 
-static int
-WIIU_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
+int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
 
@@ -167,6 +155,50 @@ WIIU_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 
     return 0;
 }
+
+void WIIU_SDL_DestroyRenderer(SDL_Renderer * renderer)
+{
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+
+    while (data->listfree) {
+        void *ptr = data->listfree;
+        data->listfree = data->listfree->next;
+        SDL_free(ptr);        
+    }
+
+    wiiuFreeColorShader();
+    wiiuFreeTextureShader();
+
+    SDL_free(data);
+    SDL_free(renderer);
+}
+
+int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
+                              Uint32 format, void * pixels, int pitch)
+{
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    Uint32 src_format;
+    void *src_pixels;
+
+    /* NOTE: The rect is already adjusted according to the viewport by
+     * SDL_RenderReadPixels.
+     */
+
+    if (rect->x < 0 || rect->x+rect->w > data->cbuf.surface.width ||
+        rect->y < 0 || rect->y+rect->h > data->cbuf.surface.height) {
+        return SDL_SetError("Tried to read outside of surface bounds");
+    }
+
+    src_format = SDL_PIXELFORMAT_RGBA8888; // TODO once working: other formats/checks
+    src_pixels = (void*)((Uint8 *) surface->pixels +
+                    rect->y * data->cbuf.surface.pitch +
+                    rect->x * 4);
+
+    return SDL_ConvertPixels(rect->w, rect->h,
+                             src_format, src_pixels, data->cbuf.surface.pitch,
+                             format, pixels, pitch);
+}
+
 
 SDL_RenderDriver WIIU_RenderDriver = {
     .CreateRenderer = WIIU_CreateRenderer,
