@@ -27,10 +27,11 @@
 
 #include "../SDL_sysrender.h"
 
-//Utility/helper functions
-static Uint32 PixelFormatByteSizeWIIU(Uint32 format);
-static GX2SurfaceFormat PixelFormatToWIIUFMT(Uint32 format);
-static Uint32 TextureNextPow2(Uint32 w);
+typedef struct
+{
+    void *next;
+    int ptr[];
+} WIIU_RenderAllocData;
 
 //Driver internal data structures
 typedef struct
@@ -41,47 +42,92 @@ typedef struct
     GX2RBuffer texPositionBuffer;
     GX2RBuffer texCoordBuffer;
     GX2RBuffer texColourBuffer;
+    WIIU_RenderAllocData *listfree;
 } WIIU_RenderData;
 
 //SDL_render API implementation
-static SDL_Renderer *WIIU_CreateRenderer(SDL_Window * window, Uint32 flags);
-static void WIIU_WindowEvent(SDL_Renderer * renderer,
+SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags);
+void WIIU_SDL_WindowEvent(SDL_Renderer * renderer,
                              const SDL_WindowEvent *event);
-static int WIIU_GetOutputSize(SDL_Renderer * renderer, int *w, int *h);
-static int WIIU_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture);
+int WIIU_SDL_GetOutputSize(SDL_Renderer * renderer, int *w, int *h);
+int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture);
 // SDL changes colour/alpha/blend values internally, this is just to notify us.
 // We don't care yet. TODO: could update GX2RBuffers less frequently with these?
-/*static int WIIU_SetTextureColorMod(SDL_Renderer * renderer,
-                                   SDL_Texture * texture);
-static int WIIU_SetTextureAlphaMod(SDL_Renderer * renderer,
-                                   SDL_Texture * texture);
-static int WIIU_SetTextureBlendMode(SDL_Renderer * renderer,
-                                    SDL_Texture * texture);*/
-static int WIIU_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
-                              const SDL_Rect * rect, const void *pixels,
-                              int pitch);
-static int WIIU_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
-                            const SDL_Rect * rect, void **pixels, int *pitch);
-static void WIIU_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture);
-static int WIIU_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture);
-static int WIIU_UpdateViewport(SDL_Renderer * renderer);
-static int WIIU_UpdateClipRect(SDL_Renderer * renderer);
-static int WIIU_RenderClear(SDL_Renderer * renderer);
-static int WIIU_RenderDrawPoints(SDL_Renderer * renderer,
-                                 const SDL_FPoint * points, int count);
-static int WIIU_RenderDrawLines(SDL_Renderer * renderer,
-                                const SDL_FPoint * points, int count);
-static int WIIU_RenderFillRects(SDL_Renderer * renderer,
-                                const SDL_FRect * rects, int count);
-static int WIIU_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
-                           const SDL_Rect * srcrect, const SDL_FRect * dstrect);
-static int WIIU_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
-                             const SDL_Rect * srcrect, const SDL_FRect * dstrect,
-                             const double angle, const SDL_FPoint * center, const SDL_RendererFlip flip);
-static int WIIU_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
-                                 Uint32 format, void * pixels, int pitch);
-static void WIIU_RenderPresent(SDL_Renderer * renderer);
-static void WIIU_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture);
-static void WIIU_DestroyRenderer(SDL_Renderer * renderer);
+/*int WIIU_SDL_SetTextureColorMod(SDL_Renderer * renderer,
+                                SDL_Texture * texture);
+int WIIU_SDL_SetTextureAlphaMod(SDL_Renderer * renderer,
+                                SDL_Texture * texture);
+int WIIU_SDL_SetTextureBlendMode(SDL_Renderer * renderer,
+                                 SDL_Texture * texture);*/
+int WIIU_SDL_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+                       const SDL_Rect * rect, const void *pixels,
+                       int pitch);
+int WIIU_SDL_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+                     const SDL_Rect * rect, void **pixels, int *pitch);
+void WIIU_SDL_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture);
+int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture);
+int WIIU_SDL_UpdateViewport(SDL_Renderer * renderer);
+int WIIU_SDL_UpdateClipRect(SDL_Renderer * renderer);
+int WIIU_SDL_RenderClear(SDL_Renderer * renderer);
+int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer,
+                          const SDL_FPoint * points, int count);
+int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer,
+                         const SDL_FPoint * points, int count);
+int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer,
+                         const SDL_FRect * rects, int count);
+int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
+                    const SDL_Rect * srcrect, const SDL_FRect * dstrect);
+int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
+                      const SDL_Rect * srcrect, const SDL_FRect * dstrect,
+                      const double angle, const SDL_FPoint * center, const SDL_RendererFlip flip);
+int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
+                          Uint32 format, void * pixels, int pitch);
+void WIIU_SDL_RenderPresent(SDL_Renderer * renderer);
+void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture);
+void WIIU_SDL_DestroyRenderer(SDL_Renderer * renderer);
+
+//Utility/helper functions
+static inline Uint32 TextureNextPow2(Uint32 w) {
+    if(w == 0)
+        return 0;
+    Uint32 n = 2;
+    while(w > n)
+        n <<= 1;
+    return n;
+}
+
+static inline Uint32 PixelFormatByteSizeWIIU(Uint32 format) {
+    switch (format) {
+        case SDL_PIXELFORMAT_RGBA4444:
+        case SDL_PIXELFORMAT_ABGR1555:
+        case SDL_PIXELFORMAT_RGBA5551:
+        case SDL_PIXELFORMAT_RGB565:
+            return 2;
+        case SDL_PIXELFORMAT_RGBA8888:
+        default:
+            return 4;
+    }
+    return 4;
+}
+
+//TODO: This could return a compMap to support stuff like ARGB or ABGR
+static inline GX2SurfaceFormat PixelFormatToWIIUFMT(Uint32 format) {
+    switch (format) {
+        case SDL_PIXELFORMAT_RGBA8888:
+            return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+        case SDL_PIXELFORMAT_RGBA4444:
+            return GX2_SURFACE_FORMAT_UNORM_R4_G4_B4_A4;
+        case SDL_PIXELFORMAT_ABGR1555:
+            return GX2_SURFACE_FORMAT_UNORM_A1_B5_G5_R5;
+        case SDL_PIXELFORMAT_RGBA5551:
+            return GX2_SURFACE_FORMAT_UNORM_R5_G5_B5_A1;
+        case SDL_PIXELFORMAT_RGB565:
+            return GX2_SURFACE_FORMAT_UNORM_R5_G6_B5;
+        default:
+            return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+    }
+    return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+}
+
 
 #endif //SDL_render_wiiu_h
