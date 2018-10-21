@@ -22,7 +22,7 @@ SOURCES = \
 	src/power/*.c \
 	src/filesystem/dummy/*.c \
 	src/render/*.c \
-	src/render/software/*.c \
+	src/render/wiiu/*.c \
 	src/stdlib/*.c \
 	src/thread/*.c \
 	src/thread/wiiu/*.c \

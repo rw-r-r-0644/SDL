@@ -142,6 +142,9 @@
 /* Wii U video dirver */
 #define SDL_VIDEO_DRIVER_WIIU  1
 
+/* Wii U render driver (src/render/wiiu/*.c) */
+#define SDL_VIDEO_RENDER_WIIU 1
+
 /* There's no battery for the console unit */
 #define SDL_POWER_DISABLED     1
 
@@ -155,7 +158,7 @@
 #define SDL_LOADSO_DISABLED    1
 
 /* Hack: for some reason some arch defines are missing in the
-   toolchain, so SDL_endian.h will think we're little endian 
+   toolchain, so SDL_endian.h will think we're little endian
    without that */
 #define SDL_BYTEORDER          SDL_BIG_ENDIAN
 
