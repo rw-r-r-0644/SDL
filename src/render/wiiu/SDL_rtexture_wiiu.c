@@ -28,6 +28,9 @@
 #include "SDL_hints.h"
 #include "SDL_render_wiiu.h"
 
+#include <gx2/context.h>
+#include <gx2/texture.h>
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>

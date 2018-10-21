@@ -25,6 +25,9 @@
 #ifndef _WIIU_shaders_h
 #define _WIIU_shaders_h
 
+#include <whb/gfx.h>
+#include <gx2/shaders.h>
+
 extern unsigned char wiiuTextureShaderData[];
 extern unsigned char wiiuColorShaderData[];
 

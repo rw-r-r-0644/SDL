@@ -26,6 +26,7 @@
 #define SDL_render_wiiu_h
 
 #include "../SDL_sysrender.h"
+#include <gx2/context.h>
 
 typedef struct
 {

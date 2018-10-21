@@ -26,6 +26,7 @@
 #define SDL_wiiuvideo_h
 
 #include <gx2/texture.h>
+#include "SDL_surface.h"
 
 #define WIIU_WINDOW_DATA "_SDL_WiiUData"
 typedef struct
