@@ -27,6 +27,7 @@
 
 #include "../SDL_sysrender.h"
 #include <gx2/context.h>
+#include <gx2/sampler.h>
 
 typedef struct
 {
@@ -37,14 +38,31 @@ typedef struct
 //Driver internal data structures
 typedef struct
 {
-    GX2Sampler sampler;
     GX2ColorBuffer cbuf;
     GX2ContextState ctx;
-    GX2RBuffer texPositionBuffer;
-    GX2RBuffer texCoordBuffer;
-    GX2RBuffer texColourBuffer;
     WIIU_RenderAllocData *listfree;
 } WIIU_RenderData;
+
+typedef struct
+{
+    GX2Sampler sampler;
+    GX2Texture texture;
+} WIIU_TextureData;
+
+static inline void *WIIU_AllocRenderData(WIIU_RenderData *r, size_t size) {
+    WIIU_RenderAllocData *rdata = SDL_malloc(sizeof(WIIU_RenderAllocData) + size);
+    rdata->next = r->listfree;
+    r->listfree = rdata;
+    return (void *)rdata->ptr;
+}
+
+static inline void WIIU_FreeRenderData(WIIU_RenderData *r) {
+    while (r->listfree) {
+        void *ptr = r->listfree;
+        r->listfree = r->listfree->next;
+        SDL_free(ptr);
+    }
+}
 
 //SDL_render API implementation
 SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags);

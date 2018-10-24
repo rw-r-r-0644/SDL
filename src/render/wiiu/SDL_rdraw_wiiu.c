@@ -50,67 +50,102 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
                         const SDL_Rect * srcrect, const SDL_FRect * dstrect)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    GX2Texture *wiiu_tex = (GX2Texture*) texture->driverdata;
+    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
 
-    float swidth = data->cbuf.surface.width;
-    float sheight = data->cbuf.surface.height;
+    float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 8);
+    float *a_texCoord = WIIU_AllocRenderData(data, sizeof(float) * 8);
 
-    //TODO: Move texCoord/pos math to shader / GX2SetViewport
-    float tr_x = (((renderer->viewport.x + dstrect->x) / swidth)*2.0f)-1.0f;
-    float tr_y = (((renderer->viewport.y + dstrect->y) / sheight)*2.0f)-1.0f;
-    float tr_w = (dstrect->w / swidth) * 2.0f;
-    float tr_h = (dstrect->h / sheight) * 2.0f;
+    /* Compute vertex points */
+    float x_min = (((renderer->viewport.x + dstrect->x) / (float)data->cbuf.surface.width) * 2.0f) - 1.0f;
+    float y_min = (((renderer->viewport.y + dstrect->y) / (float)data->cbuf.surface.height) * 2.0f) - 1.0f;
+    float x_max = (((renderer->viewport.x + dstrect->x + dstrect->w) / (float)data->cbuf.surface.width) * 2.0f) - 1.0f;
+    float y_max = (((renderer->viewport.y + dstrect->y + dstrect->h) / (float)data->cbuf.surface.height) * 2.0f) - 1.0f;
+    a_position[0] = x_min;  a_position[1] = y_min;
+    a_position[2] = x_max;  a_position[3] = y_min;
+    a_position[4] = x_max;  a_position[5] = y_max;
+    a_position[6] = x_min;  a_position[7] = y_max;
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_position, sizeof(float) * 8);
 
-    float vb[] =
-    {
-        tr_x, tr_y,
-        tr_x + tr_w, tr_y,
-        tr_x + tr_w, tr_y + tr_h,
-        tr_x, tr_y + tr_h,
-    };
+    /* Compute texture coords */
+    float tex_x_min = (float)srcrect->x / (float)tdata->texture.surface.width;
+    float tex_x_max = (float)(srcrect->x + srcrect->w) / (float)tdata->texture.surface.width;
+    float tex_y_min = (float)srcrect->y / (float)tdata->texture.surface.height;
+    float tex_y_max = (float)(srcrect->y + srcrect->h) / (float)tdata->texture.surface.height;
+    a_texCoord[0] = tex_x_min;  a_texCoord[1] = tex_y_max;
+    a_texCoord[2] = tex_x_max;  a_texCoord[3] = tex_y_max;
+    a_texCoord[4] = tex_x_max;  a_texCoord[5] = tex_y_min;
+    a_texCoord[6] = tex_x_min;  a_texCoord[7] = tex_y_min;
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_texCoord, sizeof(float) * 8);
 
-    GX2RLockBufferEx(&data->texPositionBuffer, 0);
-    memcpy(data->texPositionBuffer.buffer, vb, data->texPositionBuffer.elemCount * data->texPositionBuffer.elemSize);
-    GX2RUnlockBufferEx(&data->texPositionBuffer, 0);
-
-    float tex_x_min = (float)srcrect->x / swidth;
-    float tex_x_max = (float)(srcrect->x + srcrect->w) / swidth;
-    float tex_y_min = (float)srcrect->y / sheight;
-    float tex_y_max = (float)(srcrect->y + srcrect->h) / sheight;
-
-    float aTexCoord[] =
-    {
-        tex_x_min, tex_y_max,
-        tex_x_max, tex_y_max,
-        tex_x_max, tex_y_min,
-        tex_x_min, tex_y_min,
-    };
-
-    GX2RLockBufferEx(&data->texCoordBuffer, 0);
-    memcpy(data->texCoordBuffer.buffer, aTexCoord, data->texCoordBuffer.elemCount * data->texCoordBuffer.elemSize);
-    GX2RUnlockBufferEx(&data->texCoordBuffer, 0);
-
-    //RENDER
+    /* Render */
     GX2SetContextState(&data->ctx);
     wiiuSetTextureShader();
-
-    GX2SetPixelTexture(texture, 0);
-    GX2SetPixelSampler(sampler, 0);
-
-    GX2RSetAttributeBuffer(&data->texPositionBuffer, 0, data->texPositionBuffer.elemSize, 0);
-    GX2RSetAttributeBuffer(&data->texCoordBuffer, 1, data->texCoordBuffer.elemSize, 0);
-    GX2RSetAttributeBuffer(&data->texColourBuffer, 2, data->texColourBuffer.elemSize, 0);
-
+    GX2SetPixelTexture(&tdata->texture, 0);
+    GX2SetPixelSampler(&tdata->sampler, 0);
+    GX2SetAttribBuffer(0, sizeof(float) * 8, sizeof(float) * 2, a_position);
+    GX2SetAttribBuffer(1, sizeof(float) * 8, sizeof(float) * 2, a_texCoord);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
+}
+
+
+int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
+                          const SDL_Rect * srcrect, const SDL_FRect * dstrect,
+                          const double angle, const SDL_FPoint * center, const SDL_RendererFlip flip)
+{
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+
+    float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 8);
+    float *a_texCoord = WIIU_AllocRenderData(data, sizeof(float) * 8);
+
+    /* Compute real vertex points */
+    float x_min = renderer->viewport.x + dstrect->x;
+    float y_min = renderer->viewport.y + dstrect->y;
+    float x_max = x_min + dstrect->w;
+    float y_max = y_min + dstrect->h;
+    float cx = x_min + center->x;
+    float cy = y_min + center->y;
+    double r = angle * (M_PI / 180.0);
+    float rvb[8] = {
+        (flip & SDL_FLIP_HORIZONTAL) ? x_max : x_min, (flip & SDL_FLIP_VERTICAL) ? y_max : y_min,
+        (flip & SDL_FLIP_HORIZONTAL) ? x_min : x_max, (flip & SDL_FLIP_VERTICAL) ? y_max : y_min,
+        (flip & SDL_FLIP_HORIZONTAL) ? x_min : x_max, (flip & SDL_FLIP_VERTICAL) ? y_min : y_max,
+        (flip & SDL_FLIP_HORIZONTAL) ? x_max : x_min, (flip & SDL_FLIP_VERTICAL) ? y_min : y_max,
+    };
+    for (int i = 0; i < 8; i += 2) {
+        a_position[i+0] = (((cx + (SDL_cos(r) * (rvb[i+0] - cx) + SDL_sin(r) * (rvb[i+1] - cy))) / (float)data->cbuf.surface.width) * 2.0f) - 1.0f;
+        a_position[i+1] = (((cy + (SDL_cos(r) * (rvb[i+1] - cy) - SDL_sin(r) * (rvb[i+0] - cx))) / (float)data->cbuf.surface.height) * 2.0f) - 1.0f;
+    }
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_position, sizeof(float) * 8);
+
+    /* Compute texture coords */
+    float tex_x_min = (float)srcrect->x / (float)tdata->texture.surface.width;
+    float tex_x_max = (float)(srcrect->x + srcrect->w) / (float)tdata->texture.surface.width;
+    float tex_y_min = (float)srcrect->y / (float)tdata->texture.surface.height;
+    float tex_y_max = (float)(srcrect->y + srcrect->h) / (float)tdata->texture.surface.height;
+    a_texCoord[0] = tex_x_min;  a_texCoord[1] = tex_y_max;
+    a_texCoord[2] = tex_x_max;  a_texCoord[3] = tex_y_max;
+    a_texCoord[4] = tex_x_max;  a_texCoord[5] = tex_y_min;
+    a_texCoord[6] = tex_x_min;  a_texCoord[7] = tex_y_min;
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_texCoord, sizeof(float) * 8);
+
+    /* Render */
+    GX2SetContextState(&data->ctx);
+    wiiuSetTextureShader();
+    GX2SetPixelTexture(&tdata->texture, 0);
+    GX2SetPixelSampler(&tdata->sampler, 0);
+    GX2SetAttribBuffer(0, sizeof(float) * 8, sizeof(float) * 2, a_position);
+    GX2SetAttribBuffer(1, sizeof(float) * 8, sizeof(float) * 2, a_texCoord);
+    GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
+
+    return 0;
 }
 
 int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points,
                               int count)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    WIIU_RenderAllocData *rdata = SDL_malloc(sizeof(WIIU_RenderAllocData) + sizeof(float) * 2 * count);
-    if (!rdata) return SDL_OutOfMemory();
-    float *vb = rdata->ptr;
+    float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 2 * count);
 
     /* Compute vertex pos */
     float swidth = data->cbuf.surface.width;
@@ -119,8 +154,8 @@ int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points
     float vy = (float)renderer->viewport.y;
 
     for (int i = 0; i < count; ++i) {
-        vb[i*2+0] = (((vx + points[i].x) / swidth) * 2.0f)-1.0f;
-        vb[i*2+1] = (((vy + points[i].y) / sheight) * 2.0f)-1.0f;
+        a_position[i*2+0] = (((vx + points[i].x) / swidth) * 2.0f)-1.0f;
+        a_position[i*2+1] = (((vy + points[i].y) / sheight) * 2.0f)-1.0f;
     }
 
     /* Render points */
@@ -131,15 +166,9 @@ int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points
 
     GX2SetContextState(&data->ctx);
     wiiuSetColorShader();
-
-    GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, vb);
-    GX2SetPixelUniformReg(wiiuColorShader->pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
-
+    GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
+    GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
     GX2DrawEx(GX2_PRIMITIVE_MODE_POINTS, count, 0, 1);
-
-    /* vertex buffer can't be free'd until rendering is finished */
-    rdata->next = data->listfree;
-    data->listfree = rdata;
 
     return 0;
 }
@@ -149,9 +178,7 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
                              int count)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    WIIU_RenderAllocData *rdata = SDL_malloc(sizeof(WIIU_RenderAllocData) + sizeof(float) * 2 * count);
-    if (!rdata) return SDL_OutOfMemory();
-    float *vb = rdata->ptr;
+    float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 2 * count);
 
     /* Compute vertex pos */
     float swidth = data->cbuf.surface.width;
@@ -160,8 +187,8 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
     float vy = (float)renderer->viewport.y;
 
     for (int i = 0; i < count; ++i) {
-        vb[i*2+0] = (((vx + points[i].x) / swidth) * 2.0f) - 1.0f;
-        vb[i*2+1] = (((vy + points[i].y) / sheight) * 2.0f) - 1.0f;
+        a_position[i*2+0] = (((vx + points[i].x) / swidth) * 2.0f) - 1.0f;
+        a_position[i*2+1] = (((vy + points[i].y) / sheight) * 2.0f) - 1.0f;
     }
 
     /* Render lines */
@@ -172,15 +199,9 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
 
     GX2SetContextState(&data->ctx);
     wiiuSetColorShader();
-
-    GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, vb);
-    GX2SetPixelUniformReg(wiiuColorShader->pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
-
+    GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
+    GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
     GX2DrawEx(GX2_PRIMITIVE_MODE_LINE_STRIP, count, 0, 1);
-
-    /* vertex buffer can't be free'd until rendering is finished */
-    rdata->next = data->listfree;
-    data->listfree = rdata;
 
     return 0;
 }
@@ -188,9 +209,7 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
 int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    WIIU_RenderAllocData *rdata = SDL_malloc(sizeof(WIIU_RenderAllocData) + sizeof(float) * 2 * 4 * count);
-    if (!rdata) return SDL_OutOfMemory();
-    float *vb = rdata->ptr;
+    float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 8 * count);
 
     /* Compute vertex pos */
     float swidth = data->cbuf.surface.width;
@@ -203,14 +222,14 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
         float tr_y = (((vy + rects[i].y) / sheight) * 2.0f) - 1.0f;
         float tr_w = (rects[i].w / swidth) * 2.0f;
         float tr_h = (rects[i].h / sheight) * 2.0f;
-        vb[i*8+0] = tr_x;
-        vb[i*8+1] = tr_y;
-        vb[i*8+2] = tr_x + tr_w;
-        vb[i*8+3] = tr_y;
-        vb[i*8+4] = tr_x + tr_w;
-        vb[i*8+5] = tr_y + tr_h;
-        vb[i*8+6] = tr_x;
-        vb[i*8+7] = tr_y + tr_h;
+        a_position[i*8+0] = tr_x;
+        a_position[i*8+1] = tr_y;
+        a_position[i*8+2] = tr_x + tr_w;
+        a_position[i*8+3] = tr_y;
+        a_position[i*8+4] = tr_x + tr_w;
+        a_position[i*8+5] = tr_y + tr_h;
+        a_position[i*8+6] = tr_x;
+        a_position[i*8+7] = tr_y + tr_h;
     }
 
     /* Render rects */
@@ -221,15 +240,9 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
 
     GX2SetContextState(&data->ctx);
     wiiuSetColorShader();
-
-    GX2SetAttribBuffer(0, sizeof(float) * 2 * 4 * count, sizeof(float) * 2, vb);
-    GX2SetPixelUniformReg(wiiuColorShader->pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
-
+    GX2SetAttribBuffer(0, sizeof(float) * 2 * 4 * count, sizeof(float) * 2, a_position);
+    GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4 * count, 0, 1);
-
-    /* vertex buffer can't be free'd until rendering is finished */
-    rdata->next = data->listfree;
-    data->listfree = rdata;
 
     return 0;
 }
@@ -247,11 +260,7 @@ void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
         SDL_UpdateWindowSurface(window);
     }
 
-    while (data->listfree) {
-        void *ptr = data->listfree;
-        data->listfree = data->listfree->next;
-        SDL_free(ptr);
-    }
+    WIIU_FreeRenderData(data);
 }
 
 int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
