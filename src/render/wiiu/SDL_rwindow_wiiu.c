@@ -24,7 +24,7 @@
 
 #if SDL_VIDEO_RENDER_WIIU
 
-#include "../../video/wiiu/wiiuvideo.h"
+#include "../../video/wiiu/SDL_wiiuvideo.h"
 #include "../SDL_sysrender.h"
 #include "SDL_hints.h"
 #include "SDL_render_wiiu.h"
@@ -41,7 +41,7 @@ void WIIU_SDL_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
         // Re-init the colour buffer etc. for new window size
         // TODO check: what if we're rendering to a texture when this happens?
         // SDL may handle this already, see SDL_render.c: SDL_RendererEventWatch
-        WIIU_SetRenderTarget(renderer, NULL);
+        WIIU_SDL_SetRenderTarget(renderer, NULL);
     }
 }
 

@@ -37,8 +37,8 @@ int wiiuTextureShaderInit = 0;
 static inline void wiiuInitTextureShader() {
     if (!wiiuTextureShaderInit) {
         WHBGfxLoadGFDShaderGroup(&wiiuTextureShader, 0, wiiuTextureShaderData);
-	    WHBGfxInitShaderAttribute(&wiiuTextureShader, "position", 0, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32);
-	    WHBGfxInitShaderAttribute(&wiiuTextureShader, "tex_coord_in", 1, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32);
+	    WHBGfxInitShaderAttribute(&wiiuTextureShader, "a_position", 0, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32);
+	    WHBGfxInitShaderAttribute(&wiiuTextureShader, "a_texCoordIn", 1, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32);
         WHBGfxInitFetchShader(&wiiuTextureShader);
     }
     wiiuTextureShaderInit++;
@@ -62,7 +62,7 @@ int wiiuColorShaderInit = 0;
 static inline void wiiuInitColorShader() {
     if (!wiiuColorShaderInit) {
         WHBGfxLoadGFDShaderGroup(&wiiuColorShader, 0, wiiuColorShaderData);
-        WHBGfxInitShaderAttribute(&wiiuColorShader, "position", 0, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32);
+        WHBGfxInitShaderAttribute(&wiiuColorShader, "a_position", 0, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32);
         WHBGfxInitFetchShader(&wiiuColorShader);
     }
     wiiuColorShaderInit++;
