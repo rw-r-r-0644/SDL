@@ -23,6 +23,7 @@ SOURCES = \
 	src/filesystem/dummy/*.c \
 	src/render/*.c \
 	src/render/wiiu/*.c \
+	src/render/software/*.c \
 	src/stdlib/*.c \
 	src/thread/*.c \
 	src/thread/wiiu/*.c \

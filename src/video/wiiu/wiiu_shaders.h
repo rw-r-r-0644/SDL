@@ -31,8 +31,8 @@
 extern unsigned char wiiuTextureShaderData[];
 extern unsigned char wiiuColorShaderData[];
 
-WHBGfxShaderGroup wiiuTextureShader;
-int wiiuTextureShaderInit = 0;
+extern WHBGfxShaderGroup wiiuTextureShader;
+extern int wiiuTextureShaderInit;
 
 static inline void wiiuInitTextureShader() {
     if (!wiiuTextureShaderInit) {
@@ -56,8 +56,8 @@ static inline void wiiuSetTextureShader() {
     GX2SetPixelShader(wiiuTextureShader.pixelShader);
 }
 
-WHBGfxShaderGroup wiiuColorShader;
-int wiiuColorShaderInit = 0;
+extern WHBGfxShaderGroup wiiuColorShader;
+extern int wiiuColorShaderInit;
 
 static inline void wiiuInitColorShader() {
     if (!wiiuColorShaderInit) {
