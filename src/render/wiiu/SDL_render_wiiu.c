@@ -41,8 +41,14 @@ SDL_RenderDriver WIIU_RenderDriver;
 
 SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
 {
+    SDL_Surface *surface;
     SDL_Renderer *renderer;
     WIIU_RenderData *data;
+
+    surface = SDL_GetWindowSurface(window);
+    if (!surface) {
+        return NULL;
+    }
 
     renderer = (SDL_Renderer *) SDL_calloc(1, sizeof(*renderer));
     if (!renderer) {
