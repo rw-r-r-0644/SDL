@@ -60,12 +60,15 @@ static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window);
 #define SCREEN_WIDTH    1280
 #define SCREEN_HEIGHT   720
 
+static const float u_viewSize[4] = {(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT};
+static const float u_texSize[4] = {(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT};
+
 static const float tex_coord_vb[] =
 {
-	0.0f, 1.0f,
-	1.0f, 1.0f,
-	1.0f, 0.0f,
-	0.0f, 0.0f,
+	0.0f,                (float)SCREEN_HEIGHT,
+	(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT,
+	(float)SCREEN_WIDTH, 0.0f,
+	0.0f,                0.0f,
 };
 
 static GX2RBuffer tex_coord_buffer = {
@@ -182,6 +185,8 @@ static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *forma
 static void render_scene(WIIU_WindowData *data) {
 	WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	wiiuSetTextureShader();
+	GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)u_viewSize);
+	GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)u_texSize);
 	GX2RSetAttributeBuffer(&position_buffer, 0, position_buffer.elemSize, 0);
 	GX2RSetAttributeBuffer(&tex_coord_buffer, 1, tex_coord_buffer.elemSize, 0);
 
@@ -201,22 +206,10 @@ static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rec
 	SDL_GetWindowPosition(window, &int_x, &int_y);
 	SDL_GetWindowSize(window, &int_w, &int_h);
 
-	//TODO: move math to a shader
 	x = (float)int_x;
 	y = (float)int_y;
 	w = (float)int_w;
 	h = (float)int_h;
-
-	//x and y need to be between -1.0f and 1.0f
-	x /= (SCREEN_WIDTH / 2);
-	x -= 1.0f;
-	y /= (SCREEN_HEIGHT / 2);
-	y -= 1.0f;
-
-	//w and h need to be between 0.0f and 2.0f
-	w /= (SCREEN_WIDTH / 2);
-	h /= (SCREEN_HEIGHT / 2);
-
 	float position_vb[] =
 	{
 		x, y,
