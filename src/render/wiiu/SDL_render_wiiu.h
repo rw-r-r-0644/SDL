@@ -39,7 +39,7 @@ typedef struct
 typedef struct
 {
     GX2ColorBuffer cbuf;
-    GX2ContextState ctx;
+    GX2ContextState *ctx;
     WIIU_RenderAllocData *listfree;
 } WIIU_RenderData;
 

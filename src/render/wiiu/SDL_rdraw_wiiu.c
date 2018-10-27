@@ -78,7 +78,7 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_texCoord, sizeof(float) * 8);
 
     /* Render */
-    GX2SetContextState(&data->ctx);
+    GX2SetContextState(data->ctx);
     wiiuSetTextureShader();
     GX2SetPixelTexture(&tdata->texture, 0);
     GX2SetPixelSampler(&tdata->sampler, 0);
@@ -130,7 +130,7 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_texCoord, sizeof(float) * 8);
 
     /* Render */
-    GX2SetContextState(&data->ctx);
+    GX2SetContextState(data->ctx);
     wiiuSetTextureShader();
     GX2SetPixelTexture(&tdata->texture, 0);
     GX2SetPixelSampler(&tdata->sampler, 0);
@@ -164,7 +164,7 @@ int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points
                         (float)renderer->b / 255.0f,
                         (float)renderer->a / 255.0f};
 
-    GX2SetContextState(&data->ctx);
+    GX2SetContextState(data->ctx);
     wiiuSetColorShader();
     GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
@@ -197,7 +197,7 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
                         (float)renderer->b / 255.0f,
                         (float)renderer->a / 255.0f};
 
-    GX2SetContextState(&data->ctx);
+    GX2SetContextState(data->ctx);
     wiiuSetColorShader();
     GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
@@ -238,7 +238,7 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
                         (float)renderer->b / 255.0f,
                         (float)renderer->a / 255.0f};
 
-    GX2SetContextState(&data->ctx);
+    GX2SetContextState(data->ctx);
     wiiuSetColorShader();
     GX2SetAttribBuffer(0, sizeof(float) * 2 * 4 * count, sizeof(float) * 2, a_position);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);

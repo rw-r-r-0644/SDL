@@ -31,6 +31,7 @@
 
 #include <gx2/registers.h>
 
+#include <malloc.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -103,7 +104,9 @@ SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
     GX2SetPointSize(1.0f, 1.0f);
 
     // Create a fresh context state
-    GX2SetupContextStateEx(&data->ctx, TRUE);
+    data->ctx = (GX2ContextState *) memalign(GX2_CONTEXT_STATE_ALIGNMENT, sizeof(GX2ContextState));
+    memset(data->ctx, 0, sizeof(GX2ContextState));
+    GX2SetupContextStateEx(data->ctx, TRUE);
 
     // Setup colour buffer, rendering to the window
     WIIU_SDL_SetRenderTarget(renderer, NULL);
@@ -135,7 +138,7 @@ int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
     GX2InitColorBufferRegs(&data->cbuf);
 
     // Update context state
-    GX2SetContextState(&data->ctx);
+    GX2SetContextState(data->ctx);
     GX2SetColorBuffer(&data->cbuf, GX2_RENDER_TARGET_0);
     // These may be unnecessary - see SDL_render.c: SDL_SetRenderTarget's calls
     // to UpdateViewport and UpdateClipRect. TODO for once the render is
@@ -155,6 +158,8 @@ void WIIU_SDL_DestroyRenderer(SDL_Renderer * renderer)
         data->listfree = data->listfree->next;
         SDL_free(ptr);
     }
+
+    free(data->ctx);
 
     wiiuFreeColorShader();
     wiiuFreeTextureShader();
