@@ -115,20 +115,6 @@ static inline Uint32 TextureNextPow2(Uint32 w) {
     return n;
 }
 
-static inline Uint32 PixelFormatByteSizeWIIU(Uint32 format) {
-    switch (format) {
-        case SDL_PIXELFORMAT_RGBA4444:
-        case SDL_PIXELFORMAT_ABGR1555:
-        case SDL_PIXELFORMAT_RGBA5551:
-        case SDL_PIXELFORMAT_RGB565:
-            return 2;
-        case SDL_PIXELFORMAT_RGBA8888:
-        default:
-            return 4;
-    }
-    return 4;
-}
-
 //TODO: This could return a compMap to support stuff like ARGB or ABGR
 static inline GX2SurfaceFormat PixelFormatToWIIUFMT(Uint32 format) {
     switch (format) {

@@ -60,14 +60,16 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     tdata->texture.viewNumMips = 1;
     tdata->texture.viewNumSlices = 1;
     tdata->texture.compMap = 0x00010203;
-
     GX2CalcSurfaceSizeAndAlignment(&tdata->texture.surface);
+    GX2InitTextureRegs(&tdata->texture);
+
     tdata->texture.surface.image = memalign(tdata->texture.surface.alignment, tdata->texture.surface.imageSize);
     if(!tdata->texture.surface.image)
     {
         SDL_free(tdata);
         return SDL_OutOfMemory();
     }
+
     texture->driverdata = tdata;
 
     return 0;
@@ -80,12 +82,13 @@ int WIIU_SDL_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                          const SDL_Rect * rect, void **pixels, int *pitch)
 {
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+    Uint32 BytesPerPixel = SDL_BYTESPERPIXEL(texture->format);
 
     // Calculate pointer to first pixel in rect
     *pixels = (void *) ((Uint8 *) tdata->texture.surface.image +
-                        rect->y * tdata->texture.surface.pitch +
-                        rect->x * SDL_BYTESPERPIXEL(texture->format));
-    *pitch = tdata->texture.surface.pitch;
+                        rect->y * (tdata->texture.surface.pitch * BytesPerPixel) +
+                        rect->x * BytesPerPixel);
+    *pitch = (tdata->texture.surface.pitch * BytesPerPixel);
 
     // Not sure we even need to bother keeping track of this
     texture->locked_rect = *rect;
@@ -96,7 +99,7 @@ void WIIU_SDL_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
     // TODO check this is actually needed
-    GX2Invalidate(GX2_INVALIDATE_MODE_CPU | GX2_INVALIDATE_MODE_TEXTURE,
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_TEXTURE,
         tdata->texture.surface.image, tdata->texture.surface.imageSize);
 }
 
@@ -109,18 +112,20 @@ int WIIU_SDL_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     int row;
     size_t length;
 
-    BytesPerPixel = PixelFormatByteSizeWIIU(texture->format);
-
+    BytesPerPixel = SDL_BYTESPERPIXEL(texture->format);
     src = (Uint8 *) pixels;
     dst = (Uint8 *) tdata->texture.surface.image +
-                        rect->y * tdata->texture.surface.pitch +
+                        rect->y * (tdata->texture.surface.pitch * BytesPerPixel) +
                         rect->x * BytesPerPixel;
     length = rect->w * BytesPerPixel;
     for (row = 0; row < rect->h; ++row) {
         SDL_memcpy(dst, src, length);
         src += pitch;
-        dst += tdata->texture.surface.pitch;
+        dst += (tdata->texture.surface.pitch * BytesPerPixel);
     }
+
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_TEXTURE,
+        tdata->texture.surface.image, tdata->texture.surface.imageSize);
 
     return 0;
 }
