@@ -143,14 +143,17 @@ static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *forma
 	data = SDL_calloc(1, sizeof(WIIU_WindowData));
 
 	// create a gx2 texture
-	data->texture.surface.width    = window->w;
-	data->texture.surface.height   = window->h;
-	data->texture.surface.depth    = 1;
-	data->texture.surface.dim      = GX2_SURFACE_DIM_TEXTURE_2D;
-	data->texture.surface.format   = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
-	data->texture.surface.tileMode = GX2_TILE_MODE_LINEAR_ALIGNED;
-	data->texture.viewNumSlices    = 1;
-	data->texture.compMap          = 0x00010203;
+	data->texture.surface.use       = GX2_SURFACE_USE_TEXTURE;
+	data->texture.surface.width     = window->w;
+	data->texture.surface.height    = window->h;
+	data->texture.surface.dim       = GX2_SURFACE_DIM_TEXTURE_2D;
+	data->texture.surface.depth     = 1;
+	data->texture.surface.mipLevels = 1;
+	data->texture.surface.format    = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+	data->texture.surface.tileMode  = GX2_TILE_MODE_LINEAR_ALIGNED;
+	data->texture.viewNumSlices     = 1;
+	data->texture.viewNumMips       = 1;
+	data->texture.compMap           = 0x00010203;
 	GX2CalcSurfaceSizeAndAlignment(&data->texture.surface);
 	GX2InitTextureRegs(&data->texture);
 
