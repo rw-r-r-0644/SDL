@@ -137,6 +137,10 @@ int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
     data->cbuf.viewNumSlices = 1;
     GX2InitColorBufferRegs(&data->cbuf);
 
+    // Update u_viewSize
+    data->u_viewSize[0] = data->cbuf.surface.width;
+    data->u_viewSize[1] = data->cbuf.surface.height;
+
     // Update context state
     GX2SetContextState(data->ctx);
     GX2SetColorBuffer(&data->cbuf, GX2_RENDER_TARGET_0);

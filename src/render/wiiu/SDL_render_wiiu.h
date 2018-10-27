@@ -41,12 +41,14 @@ typedef struct
     GX2ColorBuffer cbuf;
     GX2ContextState *ctx;
     WIIU_RenderAllocData *listfree;
+    float u_viewSize[4];
 } WIIU_RenderData;
 
 typedef struct
 {
     GX2Sampler sampler;
     GX2Texture texture;
+    float u_texSize[4];
 } WIIU_TextureData;
 
 static inline void *WIIU_AllocRenderData(WIIU_RenderData *r, size_t size) {

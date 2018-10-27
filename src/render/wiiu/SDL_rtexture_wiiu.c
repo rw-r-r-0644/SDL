@@ -49,8 +49,8 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     // Setup sampler
     GX2InitSampler(&tdata->sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_LINEAR);
 
-    tdata->texture.surface.width = TextureNextPow2(texture->w);
-    tdata->texture.surface.height = TextureNextPow2(texture->h);
+    tdata->texture.surface.width = texture->w;
+    tdata->texture.surface.height = texture->h;
     tdata->texture.surface.format = PixelFormatToWIIUFMT(texture->format);
     tdata->texture.surface.depth = 1; //?
     tdata->texture.surface.dim = GX2_SURFACE_DIM_TEXTURE_2D;
@@ -69,6 +69,9 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         SDL_free(tdata);
         return SDL_OutOfMemory();
     }
+
+    tdata->u_texSize[0] = texture->w;
+    tdata->u_texSize[1] = texture->h;
 
     texture->driverdata = tdata;
 
