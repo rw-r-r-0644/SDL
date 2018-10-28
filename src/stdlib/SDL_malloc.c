@@ -502,6 +502,12 @@ DEFAULT_MMAP_THRESHOLD       default: 256K
 #define MMAP_CLEARS 0           /* WINCE and some others apparently don't clear */
 #endif /* WIN32 */
 
+#ifdef __WIIU__
+#define HAVE_MMAP 0
+#define LACKS_SYS_MMAN_H
+#define USE_LOCKS 0 // TODO: use locks
+#endif /* __WIIU__ */
+
 #if defined(DARWIN) || defined(_DARWIN)
 /* Mac OSX docs advise not to use sbrk; it seems better to use mmap */
 #ifndef HAVE_MORECORE

@@ -18,40 +18,59 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "../../SDL_internal.h"
 
-#ifndef SDL_config_h_
-#define SDL_config_h_
+#include <errno.h>
+#include <coreinit/mutex.h>
+#include "SDL_thread.h"
 
-#include "SDL_platform.h"
-
-/**
- *  \file SDL_config.h
- */
-
-/* Add any platform that doesn't build using the configure system. */
-#if defined(__WIN32__)
-#include "SDL_config_windows.h"
-#elif defined(__WINRT__)
-#include "SDL_config_winrt.h"
-#elif defined(__MACOSX__)
-#include "SDL_config_macosx.h"
-#elif defined(__IPHONEOS__)
-#include "SDL_config_iphoneos.h"
-#elif defined(__ANDROID__)
-#include "SDL_config_android.h"
-#elif defined(__PSP__)
-#include "SDL_config_psp.h"
-#elif defined(__OS2__)
-#include "SDL_config_os2.h"
-#elif defined(__WIIU__)
-#include "SDL_config_wiiu.h"
-#else
-/* This is a minimal configuration just to get SDL running on new platforms. */
-#include "SDL_config_minimal.h"
-#endif /* platform config */
-
-#ifdef USING_GENERATED_CONFIG_H
-#error Wrong SDL_config.h, check your include path?
+struct SDL_mutex
+{
+    pthread_mutex_t id;
+#if FAKE_RECURSIVE_MUTEX
+    int recursive;
+    pthread_t owner;
 #endif
+};
 
-#endif /* SDL_config_h_ */
+SDL_mutex *
+SDL_CreateMutex(void)
+{
+    OSMutex *mutex;
+
+    /* Allocate the structure */
+    mutex = (OSMutex *) SDL_calloc(1, sizeof(OSMutex));
+    OSInitMutex(mutex);
+    return (SDL_mutex *)mutex;
+}
+
+void
+SDL_DestroyMutex(SDL_mutex * mutex)
+{
+    if (mutex) {
+        SDL_free(mutex);
+    }
+}
+
+/* Lock the mutex */
+int
+SDL_LockMutex(SDL_mutex * mutex)
+{
+    OSLockMutex((OSMutex *)mutex);
+    return 0;
+}
+
+int
+SDL_TryLockMutex(SDL_mutex * mutex)
+{
+    return OSTryLockMutex((OSMutex *)mutex) ? 0 : SDL_MUTEX_TIMEDOUT;
+}
+
+int
+SDL_UnlockMutex(SDL_mutex * mutex)
+{
+    OSUnlockMutex((OSMutex *)mutex);
+    return 0;
+}
+
+/* vi: set ts=4 sw=4 expandtab: */
