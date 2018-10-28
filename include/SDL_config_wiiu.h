@@ -142,7 +142,7 @@
 /* Wii U video dirver */
 #define SDL_VIDEO_DRIVER_WIIU  1
 
-/* Wii U render driver (src/render/wiiu/*.c) */
+/* Wii U render driver (src/render/wiiu/\*.c) */
 #define SDL_VIDEO_RENDER_WIIU 1
 
 /* There's no battery for the console unit */
