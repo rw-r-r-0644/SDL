@@ -32,6 +32,10 @@
 #include <atomic.h>
 #endif
 
+#if defined(__WIIU__)
+#include <stdatomic.h>
+#endif
+
 #if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
 #include <xmmintrin.h>
 #endif
@@ -113,6 +117,10 @@ SDL_AtomicTryLock(SDL_SpinLock *lock)
 #elif defined(__SOLARIS__) && !defined(_LP64)
     /* Used for Solaris with non-gcc compilers. */
     return (SDL_bool) ((int) atomic_cas_32((volatile uint32_t*)lock, 0, 1) == 0);
+
+#elif defined(__WIIU__)
+    uint64_t val = 0;
+    return (SDL_bool) atomic_compare_exchange_strong((volatile _Atomic uint64_t*)lock, &val, 1);
 
 #else
 #error Please implement for your platform.

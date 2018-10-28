@@ -1,0 +1,83 @@
+#---------------------------------------------------------------------------------
+# Setup compile environment
+#---------------------------------------------------------------------------------
+$(call assert,$(call seq,$(strip $(DEVKITPPC)),),Please set DEVKITPPC in your environment.)
+$(call assert,$(call seq,$(strip $(WUT_ROOT)),),Please set WUT_ROOT in your environment.)
+export PORTLIBS := $(DEVKITPRO)/portlibs/ppc
+export PATH := $(WUT_ROOT)/bin:$(DEVKITPPC)/bin:$(PORTLIBS)/bin:$(PATH)
+AS  = powerpc-eabi-as
+CC  = powerpc-eabi-gcc
+CXX = powerpc-eabi-g++
+AR  = powerpc-eabi-ar
+
+
+#---------------------------------------------------------------------------------
+# Build options
+#---------------------------------------------------------------------------------
+TARGET  = libSDL2.a
+SOURCES = \
+	src/*.c \
+	src/atomic/*.c \
+	src/audio/*.c \
+	src/audio/dummy/*.c \
+	src/cpuinfo/*.c \
+	src/events/*.c \
+	src/file/*.c \
+	src/haptic/*.c \
+	src/haptic/dummy/*.c \
+	src/joystick/*.c \
+	src/joystick/wiiu/*.c \
+	src/joystick/dummy/*.c \
+	src/loadso/dummy/*.c \
+	src/power/*.c \
+	src/filesystem/dummy/*.c \
+	src/render/*.c \
+	src/render/software/*.c \
+	src/stdlib/*.c \
+	src/thread/*.c \
+	src/thread/wiiu/*.c \
+	src/thread/generic/*.c \
+	src/timer/*.c \
+	src/timer/wiiu/*.c \
+	src/timer/dummy/*.c \
+	src/video/*.c \
+	src/video/wiiu/*.c \
+	src/video/yuv2rgb/*.c \
+	src/video/dummy/*.c
+
+OBJECTS = $(shell echo $(SOURCES) | sed -e 's,\.c,\.o,g')
+INCLUDE = -I./include -I$(WUT_ROOT)/include -I$(PORTLIBS)/include
+
+
+#---------------------------------------------------------------------------------
+# Compile flags
+#---------------------------------------------------------------------------------
+CFLAGS   := -O3 -D__WIIU__ -D__WUT__ -mcpu=750 -meabi -mhard-float $(INCLUDE)
+CXXFLAGS := $(CFLAGS)
+ASFLAGS  := -g
+
+
+#---------------------------------------------------------------------------------
+# Build rules
+#---------------------------------------------------------------------------------
+.PHONY: clean install
+$(TARGET): $(OBJECTS)
+	rm -f $@
+	$(AR) rcs $@ $^
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+%.o: %.m
+	$(CC) $(OBJCFLAGS) -c $< -o $@
+%.o: %.s
+	$(CC) -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
+%.o: %.S
+	$(CC) -x assembler-with-cpp $(ASFLAGS) -c $< -o $@
+install: $(TARGET)
+	mkdir -p $(PORTLIBS)/lib
+	mkdir -p $(PORTLIBS)/include/SDL2
+	cp $(TARGET) $(PORTLIBS)/lib/
+	cp -f ./include/*.h $(PORTLIBS)/include/SDL2/
+clean:
+	rm -rf $(OBJECTS) $(TARGET)

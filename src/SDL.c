@@ -474,6 +474,8 @@ SDL_GetPlatform()
     return "iOS";
 #elif __PSP__
     return "PlayStation Portable";
+#elif __WIIU__
+    return "Wii U";
 #else
     return "Unknown (see SDL_platform.h)";
 #endif

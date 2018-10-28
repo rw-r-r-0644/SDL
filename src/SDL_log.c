@@ -37,6 +37,10 @@
 #include <android/log.h>
 #endif
 
+#if defined(__WIIU__)
+#include <coreinit/debug.h>
+#endif
+
 #define DEFAULT_PRIORITY                SDL_LOG_PRIORITY_CRITICAL
 #define DEFAULT_ASSERT_PRIORITY         SDL_LOG_PRIORITY_WARN
 #define DEFAULT_APPLICATION_PRIORITY    SDL_LOG_PRIORITY_INFO
@@ -327,7 +331,7 @@ SDL_LogOutput(void *userdata, int category, SDL_LogPriority priority,
 #if !defined(HAVE_STDIO_H) && !defined(__WINRT__)
         BOOL attachResult;
         DWORD attachError;
-        unsigned long charsWritten; 
+        unsigned long charsWritten;
         DWORD consoleMode;
 
         /* Maybe attach console and get stderr handle */
@@ -342,7 +346,7 @@ SDL_LogOutput(void *userdata, int category, SDL_LogPriority priority,
                     } else if (attachError == ERROR_GEN_FAILURE) {
                          OutputDebugString(TEXT("Could not attach to console of parent process\r\n"));
                          consoleAttached = -1;
-                    } else if (attachError == ERROR_ACCESS_DENIED) {  
+                    } else if (attachError == ERROR_ACCESS_DENIED) {
                          /* Already attached */
                         consoleAttached = 1;
                     } else {
@@ -369,10 +373,10 @@ SDL_LogOutput(void *userdata, int category, SDL_LogPriority priority,
         output = SDL_small_alloc(char, length, &isstack);
         SDL_snprintf(output, length, "%s: %s\r\n", SDL_priority_prefixes[priority], message);
         tstr = WIN_UTF8ToString(output);
-        
+
         /* Output to debugger */
         OutputDebugString(tstr);
-       
+
 #if !defined(HAVE_STDIO_H) && !defined(__WINRT__)
         /* Screen output to stderr, if console was attached. */
         if (consoleAttached == 1) {
@@ -414,6 +418,10 @@ SDL_LogOutput(void *userdata, int category, SDL_LogPriority priority,
             SDL_stack_free(text);
             return;
         }
+    }
+#elif defined(__WIIU__)
+    {
+        OSReport("SDL: %s: %s\n", SDL_priority_prefixes[priority], message);
     }
 #elif defined(__PSP__)
     {

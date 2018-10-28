@@ -53,6 +53,8 @@
 #define SDL_DYNAMIC_API 0
 #elif defined(__PSP__) && __PSP__
 #define SDL_DYNAMIC_API 0
+#elif defined(__WIIU__) && __WIIU__
+#define SDL_DYNAMIC_API 0
 #elif defined(__clang_analyzer__)
 #define SDL_DYNAMIC_API 0  /* Turn off for static analysis, so reports are more clear. */
 #endif

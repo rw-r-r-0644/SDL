@@ -380,11 +380,11 @@ struct SDL_VideoDevice
     /* Data private to this driver */
     void *driverdata;
     struct SDL_GLDriverData *gl_data;
-    
+
 #if SDL_VIDEO_OPENGL_EGL
     struct SDL_EGL_VideoData *egl_data;
 #endif
-    
+
 #if SDL_VIDEO_OPENGL_ES || SDL_VIDEO_OPENGL_ES2
     struct SDL_PrivateGLESData *gles_data;
 #endif
@@ -421,6 +421,7 @@ extern VideoBootStrap NACL_bootstrap;
 extern VideoBootStrap VIVANTE_bootstrap;
 extern VideoBootStrap Emscripten_bootstrap;
 extern VideoBootStrap QNX_bootstrap;
+extern VideoBootStrap WIIU_bootstrap;
 
 extern SDL_VideoDevice *SDL_GetVideoDevice(void);
 extern int SDL_AddBasicVideoDisplay(const SDL_DisplayMode * desktop_mode);
