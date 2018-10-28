@@ -25,6 +25,7 @@ SOURCES = \
 	src/render/wiiu/*.c \
 	src/render/software/*.c \
 	src/stdlib/*.c \
+	src/sensor/*.c \
 	src/thread/*.c \
 	src/thread/wiiu/*.c \
 	src/timer/*.c \
