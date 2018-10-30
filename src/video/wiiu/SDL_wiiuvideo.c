@@ -138,8 +138,6 @@ static void WIIU_VideoQuit(_THIS)
 
 static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch)
 {
-	int bpp;
-	Uint32 r, g, b, a;
 	WIIU_WindowData *data;
 
 	// hold a pointer to our stuff
@@ -166,7 +164,7 @@ static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *forma
 	data->surface = SDL_CreateRGBSurfaceWithFormatFrom(
 						data->texture.surface.image, // pixels
 						window->w, window->h, // width, height
-						bpp, window->w * 4, // depth, pitch
+						32, window->w * 4, // depth, pitch
 						SDL_PIXELFORMAT_RGBA8888 // format
 					);
 
@@ -199,27 +197,20 @@ static void render_scene(WIIU_WindowData *data) {
 static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects)
 {
 	WIIU_WindowData *data = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_WINDOW_DATA);
+	float a_position[8];
 	float* buffer;
-	int int_x, int_y, int_w, int_h;
-	float x, y, w, h;
+	int x, y, w, h;
 
-	SDL_GetWindowPosition(window, &int_x, &int_y);
-	SDL_GetWindowSize(window, &int_w, &int_h);
+	SDL_GetWindowPosition(window, &x, &y);
+	SDL_GetWindowSize(window, &w, &h);
+	a_position[0] = (float)x;		a_position[1] = (float)y;
+	a_position[2] = (float)(x + w);	a_position[3] = (float)y;
+	a_position[4] = (float)(x + w);	a_position[5] = (float)(y + h);
+	a_position[6] = (float)x;		a_position[7] = (float)(y + h);
 
-	x = (float)int_x;
-	y = (float)int_y;
-	w = (float)int_w;
-	h = (float)int_h;
-	float position_vb[] =
-	{
-		x, y,
-		x + w, y,
-		x + w, y + h,
-		x, y + h,
-	};
 	buffer = GX2RLockBufferEx(&position_buffer, 0);
 	if (buffer) {
-		memcpy(buffer, position_vb, position_buffer.elemSize * position_buffer.elemCount);
+		memcpy(buffer, a_position, position_buffer.elemSize * position_buffer.elemCount);
 	}
 	GX2RUnlockBufferEx(&position_buffer, 0);
 

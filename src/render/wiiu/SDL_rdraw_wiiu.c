@@ -51,13 +51,14 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+    float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 8);
+    float *a_texCoord = WIIU_AllocRenderData(data, sizeof(float) * 8);
 
     /* Compute vertex points */
     float x_min = renderer->viewport.x + dstrect->x;
     float y_min = renderer->viewport.y + dstrect->y;
     float x_max = renderer->viewport.x + dstrect->x + dstrect->w;
     float y_max = renderer->viewport.y + dstrect->y + dstrect->h;
-    float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 8);
     a_position[0] = x_min;  a_position[1] = y_min;
     a_position[2] = x_max;  a_position[3] = y_min;
     a_position[4] = x_max;  a_position[5] = y_max;
@@ -65,7 +66,6 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_position, sizeof(float) * 8);
 
     /* Compute texture coords */
-    float *a_texCoord = WIIU_AllocRenderData(data, sizeof(float) * 8);
     a_texCoord[0] = srcrect->x;                a_texCoord[1] = srcrect->y + srcrect->h;
     a_texCoord[2] = srcrect->x + srcrect->w;   a_texCoord[3] = srcrect->y + srcrect->h;
     a_texCoord[4] = srcrect->x + srcrect->w;   a_texCoord[5] = srcrect->y;
@@ -93,6 +93,8 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+    float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 8);
+    float *a_texCoord = WIIU_AllocRenderData(data, sizeof(float) * 8);
 
     /* Compute real vertex points */
     float x_min = renderer->viewport.x + dstrect->x;
@@ -108,7 +110,6 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
         (flip & SDL_FLIP_HORIZONTAL) ? x_min : x_max, (flip & SDL_FLIP_VERTICAL) ? y_min : y_max,
         (flip & SDL_FLIP_HORIZONTAL) ? x_max : x_min, (flip & SDL_FLIP_VERTICAL) ? y_min : y_max,
     };
-    float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 8);
     for (int i = 0; i < 8; i += 2) {
         a_position[i+0] = cx + (SDL_cos(r) * (rvb[i+0] - cx) + SDL_sin(r) * (rvb[i+1] - cy));
         a_position[i+1] = cy + (SDL_cos(r) * (rvb[i+1] - cy) - SDL_sin(r) * (rvb[i+0] - cx));
@@ -116,7 +117,6 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_position, sizeof(float) * 8);
 
     /* Compute texture coords */
-    float *a_texCoord = WIIU_AllocRenderData(data, sizeof(float) * 8);
     a_texCoord[0] = srcrect->x;                a_texCoord[1] = srcrect->y + srcrect->h;
     a_texCoord[2] = srcrect->x + srcrect->w;   a_texCoord[3] = srcrect->y + srcrect->h;
     a_texCoord[4] = srcrect->x + srcrect->w;   a_texCoord[5] = srcrect->y;
@@ -142,6 +142,12 @@ int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
 
+    /* Compute colors */
+    float u_color[4] = {(float)renderer->r / 255.0f,
+                        (float)renderer->g / 255.0f,
+                        (float)renderer->b / 255.0f,
+                        (float)renderer->a / 255.0f};
+
     /* Compute vertex pos */
     float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 2 * count);
     for (int i = 0; i < count; ++i) {
@@ -151,11 +157,6 @@ int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_position, sizeof(float) * 2 * count);
 
     /* Render points */
-    float u_color[4] = {(float)renderer->r / 255.0f,
-                        (float)renderer->g / 255.0f,
-                        (float)renderer->b / 255.0f,
-                        (float)renderer->a / 255.0f};
-
     GX2SetContextState(data->ctx);
     wiiuSetColorShader();
     GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
@@ -172,6 +173,12 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
 
+    /* Compute colors */
+    float u_color[4] = {(float)renderer->r / 255.0f,
+                        (float)renderer->g / 255.0f,
+                        (float)renderer->b / 255.0f,
+                        (float)renderer->a / 255.0f};
+
     /* Compute vertex pos */
     float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 2 * count);
     for (int i = 0; i < count; ++i) {
@@ -181,11 +188,6 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_position, sizeof(float) * 2 * count);
 
     /* Render lines */
-    float u_color[4] = {(float)renderer->r / 255.0f,
-                        (float)renderer->g / 255.0f,
-                        (float)renderer->b / 255.0f,
-                        (float)renderer->a / 255.0f};
-
     GX2SetContextState(data->ctx);
     wiiuSetColorShader();
     GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
@@ -200,9 +202,13 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
 
+    /* Compute colors */
+    float u_color[4] = {(float)renderer->r / 255.0f,
+                        (float)renderer->g / 255.0f,
+                        (float)renderer->b / 255.0f,
+                        (float)renderer->a / 255.0f};
+
     /* Compute vertex pos */
-    float swidth = data->cbuf.surface.width;
-    float sheight = data->cbuf.surface.height;
     float vx = (float)renderer->viewport.x;
     float vy = (float)renderer->viewport.y;
 
@@ -220,11 +226,6 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_position, sizeof(float) * 8 * count);
 
     /* Render rects */
-    float u_color[4] = {(float)renderer->r / 255.0f,
-                        (float)renderer->g / 255.0f,
-                        (float)renderer->b / 255.0f,
-                        (float)renderer->a / 255.0f};
-
     GX2SetContextState(data->ctx);
     wiiuSetColorShader();
     GX2SetAttribBuffer(0, sizeof(float) * 8 * count, sizeof(float) * 2, a_position);

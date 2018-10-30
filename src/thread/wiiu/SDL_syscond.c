@@ -112,6 +112,8 @@ int
 SDL_CondWaitTimeout(SDL_cond * cond, SDL_mutex * mutex, Uint32 ms)
 {
 	WIIU_CondWaitTimeoutData data;
+    OSAlarm alarm;
+
 	data.timed_out = false;
 	data.cond = (OSCondition *)cond;
 
@@ -120,7 +122,6 @@ SDL_CondWaitTimeout(SDL_cond * cond, SDL_mutex * mutex, Uint32 ms)
 		return SDL_MUTEX_TIMEDOUT;
 
 	// Set an alarm
-	OSAlarm alarm;
 	OSCreateAlarm(&alarm);
 	OSSetAlarmUserData(&alarm, &data);
 	OSSetAlarm(&alarm, OSMillisecondsToTicks(ms), &SDL_CondWaitTimeoutCallback);
