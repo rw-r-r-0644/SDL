@@ -151,6 +151,7 @@ extern SDL_JoystickDriver SDL_HIDAPI_JoystickDriver;
 extern SDL_JoystickDriver SDL_IOS_JoystickDriver;
 extern SDL_JoystickDriver SDL_LINUX_JoystickDriver;
 extern SDL_JoystickDriver SDL_WINDOWS_JoystickDriver;
+extern SDL_JoystickDriver SDL_WIIU_JoystickDriver;
 
 #endif /* SDL_sysjoystick_h_ */
 
