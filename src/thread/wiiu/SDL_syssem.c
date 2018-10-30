@@ -90,6 +90,7 @@ int
 SDL_SemWaitTimeout(SDL_sem * sem, Uint32 ms)
 {
 	WIIU_SemWaitTimeoutData data;
+    OSAlarm alarm;
 
 	// timeout is zero
 	if (!ms)
@@ -102,12 +103,11 @@ SDL_SemWaitTimeout(SDL_sem * sem, Uint32 ms)
 	data.cond = &sem->cond;
 
 	// set an alarm
-	OSAlarm alarm;
 	OSCreateAlarm(&alarm);
 	OSSetAlarmUserData(&alarm, &data);
 	OSSetAlarm(&alarm, OSMillisecondsToTicks(ms), &SDL_SemWaitTimeoutCallback);
 
-	// try to acquire the semaphore 
+	// try to acquire the semaphore
     while((OSTryWaitSemaphore(&sem->sem) <= 0) && (data.timed_out == false)) {
 		OSWaitCond(&sem->cond, &sem->mtx);
     }

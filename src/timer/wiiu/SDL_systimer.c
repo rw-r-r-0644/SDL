@@ -52,11 +52,13 @@ SDL_TicksQuit(void)
 Uint32
 SDL_GetTicks(void)
 {
-   if (!ticks_started) {
+    OSTime now;
+
+    if (!ticks_started) {
         SDL_TicksInit();
     }
 
-    OSTime now = OSGetSystemTime();
+    now = OSGetSystemTime();
     return (Uint32)OSTicksToMilliseconds(now - start);
 }
 

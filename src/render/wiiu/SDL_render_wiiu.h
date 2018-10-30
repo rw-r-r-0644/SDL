@@ -109,9 +109,9 @@ void WIIU_SDL_DestroyRenderer(SDL_Renderer * renderer);
 
 //Utility/helper functions
 static inline Uint32 TextureNextPow2(Uint32 w) {
+    Uint32 n = 2;
     if(w == 0)
         return 0;
-    Uint32 n = 2;
     while(w > n)
         n <<= 1;
     return n;

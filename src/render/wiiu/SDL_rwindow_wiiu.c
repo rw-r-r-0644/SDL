@@ -50,6 +50,7 @@ void WIIU_SDL_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 // see SDL_*WindowTexture from SDL_video.c for how this could be done
 int WIIU_SDL_GetOutputSize(SDL_Renderer * renderer, int *w, int *h) {
     SDL_GetWindowSize(renderer->window, w, h);
+    return 0;
 }
 
 // We handle all viewport changes in the render functions and shaders, so we
