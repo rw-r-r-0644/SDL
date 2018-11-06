@@ -1,0 +1,14 @@
+; $MODE = "UniformRegister"
+; $UNIFORM_VARS[0].name = "u_color"
+; $UNIFORM_VARS[0].type = "float4"
+; $UNIFORM_VARS[0].count = 1
+; $UNIFORM_VARS[0].offset = 0
+; $UNIFORM_VARS[0].block = -1
+
+00 ALU: ADDR(32) CNT(4) 
+      0  x: MOV         R0.x,  C0.x      
+         y: MOV         R0.y,  C0.y      
+         z: MOV         R0.z,  C0.z      
+         w: MOV         R0.w,  C0.w      
+01 EXP_DONE: PIX0, R0
+END_OF_PROGRAM
