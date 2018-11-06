@@ -1,0 +1,8 @@
+#include <whb/gfx.h>
+
+WHBGfxShaderGroup wiiuTextureShader;
+int wiiuTextureShaderInit = 0;
+
+WHBGfxShaderGroup wiiuColorShader;
+int wiiuColorShaderInit = 0;
+
