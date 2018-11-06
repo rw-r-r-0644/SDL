@@ -135,7 +135,9 @@ int WIIU_SDL_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 
 void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+    WIIU_TextureData *tdata;
+    if (texture == NULL || texture->driverdata == NULL) return;
+    tdata = (WIIU_TextureData *) texture->driverdata;
     free(tdata->texture.surface.image);
     SDL_free(tdata);
 }
