@@ -33,6 +33,7 @@
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_keyboard_c.h"
 #include "SDL_wiiuvideo.h"
+#include "SDL_wiiuevents_c.h"
 
 #include <gfd.h>
 #include <gx2/draw.h>
@@ -41,7 +42,6 @@
 #include <gx2/registers.h>
 #include <gx2r/draw.h>
 #include <gx2r/buffer.h>
-#include <whb/proc.h>
 #include <whb/gfx.h>
 #include <coreinit/memdefaultheap.h>
 #include <string.h>
@@ -52,7 +52,6 @@
 static int WIIU_VideoInit(_THIS);
 static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
 static void WIIU_VideoQuit(_THIS);
-static void WIIU_PumpEvents(_THIS);
 static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch);
 static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects);
 static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window);
@@ -93,7 +92,7 @@ static int WIIU_VideoInit(_THIS)
 	SDL_DisplayMode mode;
 	void *buffer = NULL;
 
-	WHBProcInit();
+	WIIU_EventsInit();
 	WHBGfxInit();
 
 	// setup shader
@@ -133,7 +132,7 @@ static void WIIU_VideoQuit(_THIS)
 	GX2RDestroyBufferEx(&tex_coord_buffer, 0);
     wiiuFreeTextureShader();
 	WHBGfxShutdown();
-	WHBProcShutdown();
+	WIIU_EventsShutdown();
 }
 
 static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch)
@@ -242,10 +241,6 @@ static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window)
 static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
 {
 	return 0;
-}
-
-static void WIIU_PumpEvents(_THIS)
-{
 }
 
 static int WIIU_Available(void)
