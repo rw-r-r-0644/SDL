@@ -210,13 +210,36 @@ SDL_RenderDriver WIIU_RenderDriver = {
     .info = {
         .name = "WiiU GX2",
         .flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE,
-        .num_texture_formats = 1, //5,
+        .num_texture_formats = 13, //21,
         .texture_formats = {
+        /*  TODO: Alpha-less (X) formats */
             SDL_PIXELFORMAT_RGBA8888,
-/*          SDL_PIXELFORMAT_RGBA4444,
+//            SDL_PIXELFORMAT_RGBX8888,
+
+//            SDL_PIXELFORMAT_RGB444,
+            SDL_PIXELFORMAT_ARGB4444,
+            SDL_PIXELFORMAT_RGBA4444,
+            SDL_PIXELFORMAT_ABGR4444,
+            SDL_PIXELFORMAT_BGRA4444,
+
+//            SDL_PIXELFORMAT_RGB555,
+            SDL_PIXELFORMAT_ARGB1555,
+//            SDL_PIXELFORMAT_BGR555,
             SDL_PIXELFORMAT_ABGR1555,
             SDL_PIXELFORMAT_RGBA5551,
-            SDL_PIXELFORMAT_RGB565,*/
+            SDL_PIXELFORMAT_BGRA5551,
+
+        /*  TODO: RGB565 doesn't seem to work right, endian issue? */
+//            SDL_PIXELFORMAT_RGB565,
+//            SDL_PIXELFORMAT_BGR565,
+
+            SDL_PIXELFORMAT_ARGB8888,
+            SDL_PIXELFORMAT_BGRA8888,
+//            SDL_PIXELFORMAT_BGRX8888,
+            SDL_PIXELFORMAT_ABGR8888,
+//            SDL_PIXELFORMAT_BGR888,
+
+            SDL_PIXELFORMAT_ARGB2101010,
         },
         .max_texture_width = 0,
         .max_texture_height = 0,

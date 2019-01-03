@@ -42,6 +42,7 @@
 
 int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
+    WIIUPixFmt gx2_fmt;
     WIIU_TextureData *tdata = (WIIU_TextureData *) SDL_calloc(1, sizeof(*tdata));
     if (!tdata)
         return SDL_OutOfMemory();
@@ -49,9 +50,13 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     // Setup sampler
     GX2InitSampler(&tdata->sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_LINEAR);
 
+    gx2_fmt = SDLFormatToWIIUFormat(texture->format);
+
+    printf("Tex %s, using GX2 %08X %08X\n", SDL_GetPixelFormatName(texture->format), gx2_fmt.fmt, gx2_fmt.compMap);
+
     tdata->texture.surface.width = texture->w;
     tdata->texture.surface.height = texture->h;
-    tdata->texture.surface.format = PixelFormatToWIIUFMT(texture->format);
+    tdata->texture.surface.format = gx2_fmt.fmt;
     tdata->texture.surface.depth = 1; //?
     tdata->texture.surface.dim = GX2_SURFACE_DIM_TEXTURE_2D;
     tdata->texture.surface.tileMode = GX2_TILE_MODE_LINEAR_ALIGNED;
@@ -59,7 +64,7 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     tdata->texture.surface.mipLevels = 1;
     tdata->texture.viewNumMips = 1;
     tdata->texture.viewNumSlices = 1;
-    tdata->texture.compMap = 0x00010203;
+    tdata->texture.compMap = gx2_fmt.compMap;
     GX2CalcSurfaceSizeAndAlignment(&tdata->texture.surface);
     GX2InitTextureRegs(&tdata->texture);
 

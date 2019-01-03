@@ -26,6 +26,7 @@
 #define SDL_render_wiiu_h
 
 #include "../SDL_sysrender.h"
+#include "SDL_pixels.h"
 #include <gx2/context.h>
 #include <gx2/sampler.h>
 
@@ -117,24 +118,113 @@ static inline Uint32 TextureNextPow2(Uint32 w) {
     return n;
 }
 
-//TODO: This could return a compMap to support stuff like ARGB or ABGR
-static inline GX2SurfaceFormat PixelFormatToWIIUFMT(Uint32 format) {
-    switch (format) {
-        case SDL_PIXELFORMAT_RGBA8888:
-            return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
-        case SDL_PIXELFORMAT_RGBA4444:
-            return GX2_SURFACE_FORMAT_UNORM_R4_G4_B4_A4;
-        case SDL_PIXELFORMAT_ABGR1555:
-            return GX2_SURFACE_FORMAT_UNORM_A1_B5_G5_R5;
-        case SDL_PIXELFORMAT_RGBA5551:
-            return GX2_SURFACE_FORMAT_UNORM_R5_G5_B5_A1;
-        case SDL_PIXELFORMAT_RGB565:
-            return GX2_SURFACE_FORMAT_UNORM_R5_G6_B5;
-        default:
-            return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
-    }
-    return GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
-}
+typedef struct WIIUPixFmt {
+    GX2SurfaceFormat fmt;
+    uint32_t compMap;
+} WIIUPixFmt;
 
+static inline WIIUPixFmt SDLFormatToWIIUFormat(Uint32 format) {
+    WIIUPixFmt outFmt = { /* sane defaults? */
+        .fmt = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8,
+        .compMap = 0x00010203,
+    };
+    switch (format) {
+    /*  packed16 formats: 4 bits/channel */
+        case SDL_PIXELFORMAT_RGB444: /* aka XRGB4444 */
+        case SDL_PIXELFORMAT_ARGB4444: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R4_G4_B4_A4;
+            outFmt.compMap = 0x01020300;
+            break;
+        }
+        case SDL_PIXELFORMAT_RGBA4444: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R4_G4_B4_A4;
+            outFmt.compMap = 0x00010203;
+            break;
+        }
+        case SDL_PIXELFORMAT_ABGR4444: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R4_G4_B4_A4;
+            outFmt.compMap = 0x03020100;
+            break;
+        }
+        case SDL_PIXELFORMAT_BGRA4444: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R4_G4_B4_A4;
+            outFmt.compMap = 0x02010003;
+            break;
+        }
+
+    /*  packed16 formats: 5 bits/channel */
+        case SDL_PIXELFORMAT_RGB555: /* aka XRGB1555 */
+        case SDL_PIXELFORMAT_ARGB1555: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R5_G5_B5_A1;
+            outFmt.compMap = 0x01020300;
+            break;
+        }
+        case SDL_PIXELFORMAT_BGR555: /* aka XRGB1555 */
+        case SDL_PIXELFORMAT_ABGR1555: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R5_G5_B5_A1;
+            outFmt.compMap = 0x03020100;
+            break;
+        }
+        case SDL_PIXELFORMAT_RGBA5551: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R5_G5_B5_A1;
+            outFmt.compMap = 0x00010203;
+            break;
+        }
+        case SDL_PIXELFORMAT_BGRA5551: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R5_G5_B5_A1;
+            outFmt.compMap = 0x02010003;
+            break;
+        }
+
+    /*  packed16 formats: 565 */
+        case SDL_PIXELFORMAT_RGB565: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R5_G6_B5;
+            outFmt.compMap = 0x00010203;
+            break;
+        }
+        case SDL_PIXELFORMAT_BGR565: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R5_G6_B5;
+            outFmt.compMap = 0x02010003;
+            break;
+        }
+
+    /*  packed32 formats */
+        case SDL_PIXELFORMAT_RGBA8888:
+        case SDL_PIXELFORMAT_RGBX8888: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+            outFmt.compMap = 0x00010203;
+            break;
+        }
+        case SDL_PIXELFORMAT_ARGB8888: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+            outFmt.compMap = 0x01020300;
+            break;
+        }
+        case SDL_PIXELFORMAT_BGRA8888:
+        case SDL_PIXELFORMAT_BGRX8888: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+            outFmt.compMap = 0x02010003;
+            break;
+        }
+        case SDL_PIXELFORMAT_ABGR8888:
+        case SDL_PIXELFORMAT_BGR888: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
+            outFmt.compMap = 0x03020100;
+            break;
+        }
+        case SDL_PIXELFORMAT_ARGB2101010: {
+            outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R10_G10_B10_A2;
+            outFmt.compMap = 0x01020300;
+            break;
+        }
+        default: {
+        /*  TODO return an error */
+            printf("SDL: WiiU format not recognised (SDL: %08X)\n", format);
+            break;
+        }
+    }
+
+    return outFmt;
+}
 
 #endif //SDL_render_wiiu_h
