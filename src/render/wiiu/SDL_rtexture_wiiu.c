@@ -52,8 +52,6 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 
     gx2_fmt = SDLFormatToWIIUFormat(texture->format);
 
-    printf("Tex %s, using GX2 %08X %08X\n", SDL_GetPixelFormatName(texture->format), gx2_fmt.fmt, gx2_fmt.compMap);
-
     tdata->texture.surface.width = texture->w;
     tdata->texture.surface.height = texture->h;
     tdata->texture.surface.format = gx2_fmt.fmt;
