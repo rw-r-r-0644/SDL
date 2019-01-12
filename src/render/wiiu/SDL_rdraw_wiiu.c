@@ -123,8 +123,8 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
         (flip & SDL_FLIP_HORIZONTAL) ? x_max : x_min, (flip & SDL_FLIP_VERTICAL) ? y_min : y_max,
     };
     for (int i = 0; i < 8; i += 2) {
-        a_position[i+0] = cx + (SDL_cos(r) * (rvb[i+0] - cx) + SDL_sin(r) * (rvb[i+1] - cy));
-        a_position[i+1] = cy + (SDL_cos(r) * (rvb[i+1] - cy) - SDL_sin(r) * (rvb[i+0] - cx));
+        a_position[i+0] = cx + (SDL_cos(r) * (rvb[i+0] - cx) - SDL_sin(r) * (rvb[i+1] - cy));
+        a_position[i+1] = cy + (SDL_cos(r) * (rvb[i+1] - cy) + SDL_sin(r) * (rvb[i+0] - cx));
     }
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_position, sizeof(float) * 8);
 
