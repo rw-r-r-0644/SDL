@@ -208,7 +208,7 @@ SDL_RenderDriver WIIU_RenderDriver = {
     .CreateRenderer = WIIU_SDL_CreateRenderer,
     .info = {
         .name = "WiiU GX2",
-        .flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE,
+        .flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE,
         .num_texture_formats = 13, //21,
         .texture_formats = {
         /*  TODO: Alpha-less (X) formats */
