@@ -46,6 +46,8 @@
 #include <string.h>
 #include <math.h>
 
+static void WIIU_SDL_SetGX2BlendMode(SDL_BlendMode mode);
+
 int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
                         const SDL_Rect * srcrect, const SDL_FRect * dstrect)
 {
@@ -53,6 +55,7 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
     float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 8);
     float *a_texCoord = WIIU_AllocRenderData(data, sizeof(float) * 8);
+    float *u_mod = WIIU_AllocRenderData(data, sizeof(float) * 4);
 
     /* Compute vertex points */
     float x_min = renderer->viewport.x + dstrect->x;
@@ -72,6 +75,12 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     a_texCoord[6] = srcrect->x;                a_texCoord[7] = srcrect->y;
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_texCoord, sizeof(float) * 8);
 
+    /* Compute color/alpha mod */
+    u_mod[0] = (float)texture->r / 255.0f;
+    u_mod[1] = (float)texture->g / 255.0f;
+    u_mod[2] = (float)texture->b / 255.0f;
+    u_mod[3] = (float)texture->a / 255.0f;
+
     /* Render */
     GX2SetContextState(data->ctx);
     wiiuSetTextureShader();
@@ -81,6 +90,8 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2SetAttribBuffer(1, sizeof(float) * 8, sizeof(float) * 2, a_texCoord);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)data->u_viewSize);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)tdata->u_texSize);
+    GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_mod);
+    WIIU_SDL_SetGX2BlendMode(texture->blendMode);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
 
     return 0;
@@ -95,6 +106,7 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
     float *a_position = WIIU_AllocRenderData(data, sizeof(float) * 8);
     float *a_texCoord = WIIU_AllocRenderData(data, sizeof(float) * 8);
+    float *u_mod = WIIU_AllocRenderData(data, sizeof(float) * 4);
 
     /* Compute real vertex points */
     float x_min = renderer->viewport.x + dstrect->x;
@@ -123,6 +135,12 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     a_texCoord[6] = srcrect->x;                a_texCoord[7] = srcrect->y;
     GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_texCoord, sizeof(float) * 8);
 
+    /* Compute color/alpha mod */
+    u_mod[0] = (float)texture->r / 255.0f;
+    u_mod[1] = (float)texture->g / 255.0f;
+    u_mod[2] = (float)texture->b / 255.0f;
+    u_mod[3] = (float)texture->a / 255.0f;
+
     /* Render */
     GX2SetContextState(data->ctx);
     wiiuSetTextureShader();
@@ -132,6 +150,8 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2SetAttribBuffer(1, sizeof(float) * 8, sizeof(float) * 2, a_texCoord);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)data->u_viewSize);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)tdata->u_texSize);
+    GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_mod);
+    WIIU_SDL_SetGX2BlendMode(texture->blendMode);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
 
     return 0;
@@ -162,6 +182,7 @@ int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points
     GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)data->u_viewSize);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
+    WIIU_SDL_SetGX2BlendMode(SDL_BLENDMODE_BLEND);
     GX2DrawEx(GX2_PRIMITIVE_MODE_POINTS, count, 0, 1);
 
     return 0;
@@ -193,6 +214,7 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
     GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)data->u_viewSize);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
+    WIIU_SDL_SetGX2BlendMode(SDL_BLENDMODE_BLEND);
     GX2DrawEx(GX2_PRIMITIVE_MODE_LINE_STRIP, count, 0, 1);
 
     return 0;
@@ -231,6 +253,7 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
     GX2SetAttribBuffer(0, sizeof(float) * 8 * count, sizeof(float) * 2, a_position);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)data->u_viewSize);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
+    WIIU_SDL_SetGX2BlendMode(SDL_BLENDMODE_BLEND);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4 * count, 0, 1);
 
     return 0;
@@ -261,6 +284,30 @@ int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
                   (float)renderer->b / 255.0f,
                   (float)renderer->a / 255.0f);
     return 0;
+}
+
+static void WIIU_SDL_SetGX2BlendMode(SDL_BlendMode mode) {
+    if (mode == SDL_BLENDMODE_NONE) {
+        GX2SetColorControl(GX2_LOGIC_OP_COPY, 0x00, FALSE, TRUE);
+    } else if (mode == SDL_BLENDMODE_BLEND || mode == SDL_BLENDMODE_MOD) {
+        GX2SetColorControl(GX2_LOGIC_OP_COPY, 0xFF, FALSE, TRUE);
+        GX2SetBlendControl(GX2_RENDER_TARGET_0,
+        /*  Not sure this is correct - ALPHA, not COLOR? */
+            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_INV_DST_ALPHA,
+            GX2_BLEND_COMBINE_MODE_ADD,
+            TRUE,
+            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_INV_DST_ALPHA,
+            GX2_BLEND_COMBINE_MODE_ADD);
+    } else if (mode == SDL_BLENDMODE_ADD) {
+        GX2SetColorControl(GX2_LOGIC_OP_COPY, 0xFF, FALSE, TRUE);
+        GX2SetBlendControl(GX2_RENDER_TARGET_0,
+            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_DST_ALPHA,
+            GX2_BLEND_COMBINE_MODE_ADD,
+            TRUE,
+            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_DST_ALPHA,
+            GX2_BLEND_COMBINE_MODE_ADD);
+    }
+/*  TODO: SDL_BLENDMODE_MOD support */
 }
 
 #endif //SDL_VIDEO_RENDER_WIIU
