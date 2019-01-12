@@ -1,7 +1,7 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 2018-2018 Ash Logan <ash@heyquark.com>
-  Copyright (C) 2018-2018 Roberto Van Eeden <r.r.qwertyuiop.r.r@gmail.com>
+  Copyright (C) 2018-2019 Ash Logan <ash@heyquark.com>
+  Copyright (C) 2018-2019 Roberto Van Eeden <r.r.qwertyuiop.r.r@gmail.com>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -182,7 +182,7 @@ int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points
     GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)data->u_viewSize);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
-    WIIU_SDL_SetGX2BlendMode(SDL_BLENDMODE_BLEND);
+    WIIU_SDL_SetGX2BlendMode(renderer->blendMode);
     GX2DrawEx(GX2_PRIMITIVE_MODE_POINTS, count, 0, 1);
 
     return 0;
@@ -214,7 +214,7 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
     GX2SetAttribBuffer(0, sizeof(float) * 2 * count, sizeof(float) * 2, a_position);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)data->u_viewSize);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
-    WIIU_SDL_SetGX2BlendMode(SDL_BLENDMODE_BLEND);
+    WIIU_SDL_SetGX2BlendMode(renderer->blendMode);
     GX2DrawEx(GX2_PRIMITIVE_MODE_LINE_STRIP, count, 0, 1);
 
     return 0;
@@ -253,7 +253,7 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
     GX2SetAttribBuffer(0, sizeof(float) * 8 * count, sizeof(float) * 2, a_position);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)data->u_viewSize);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_color);
-    WIIU_SDL_SetGX2BlendMode(SDL_BLENDMODE_BLEND);
+    WIIU_SDL_SetGX2BlendMode(renderer->blendMode);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4 * count, 0, 1);
 
     return 0;
@@ -286,28 +286,41 @@ int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
     return 0;
 }
 
-static void WIIU_SDL_SetGX2BlendMode(SDL_BlendMode mode) {
+static void WIIU_SDL_SetGX2BlendMode(SDL_BlendMode mode)
+{
     if (mode == SDL_BLENDMODE_NONE) {
         GX2SetColorControl(GX2_LOGIC_OP_COPY, 0x00, FALSE, TRUE);
-    } else if (mode == SDL_BLENDMODE_BLEND || mode == SDL_BLENDMODE_MOD) {
+    } else if (mode == SDL_BLENDMODE_BLEND) {
         GX2SetColorControl(GX2_LOGIC_OP_COPY, 0xFF, FALSE, TRUE);
         GX2SetBlendControl(GX2_RENDER_TARGET_0,
-        /*  Not sure this is correct - ALPHA, not COLOR? */
-            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_INV_DST_ALPHA,
+            /* RGB = [srcRGB * srcA] + [dstRGB * (1-srcA)] */
+            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_INV_SRC_ALPHA,
             GX2_BLEND_COMBINE_MODE_ADD,
             TRUE,
-            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_INV_DST_ALPHA,
+            /* A = [srcA * 1] + [dstA * (1-srcA)] */
+            GX2_BLEND_MODE_ONE, GX2_BLEND_MODE_INV_SRC_ALPHA,
             GX2_BLEND_COMBINE_MODE_ADD);
     } else if (mode == SDL_BLENDMODE_ADD) {
         GX2SetColorControl(GX2_LOGIC_OP_COPY, 0xFF, FALSE, TRUE);
         GX2SetBlendControl(GX2_RENDER_TARGET_0,
-            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_DST_ALPHA,
+            /* RGB = [srcRGB * srcA] + [dstRGB * 1] */
+            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_ONE,
             GX2_BLEND_COMBINE_MODE_ADD,
             TRUE,
-            GX2_BLEND_MODE_SRC_ALPHA, GX2_BLEND_MODE_DST_ALPHA,
+            /* A = [srcA * 0] + [dstA * 1] */
+            GX2_BLEND_MODE_ZERO, GX2_BLEND_MODE_ONE,
             GX2_BLEND_COMBINE_MODE_ADD);
-    }
-/*  TODO: SDL_BLENDMODE_MOD support */
+    } else if (mode == SDL_BLENDMODE_MOD) {
+        GX2SetColorControl(GX2_LOGIC_OP_COPY, 0xFF, FALSE, TRUE);
+        GX2SetBlendControl(GX2_RENDER_TARGET_0,
+            /* RGB = [srcRGB * dstRGB] + [dstRGB * 0]) */
+            GX2_BLEND_MODE_DST_COLOR, GX2_BLEND_MODE_ZERO,
+            GX2_BLEND_COMBINE_MODE_ADD,
+            TRUE,
+            /* A = [srcA * 0] + [dstA * 1] */
+            GX2_BLEND_MODE_ZERO, GX2_BLEND_MODE_ONE,
+            GX2_BLEND_COMBINE_MODE_ADD);
+	}
 }
 
 #endif //SDL_VIDEO_RENDER_WIIU
