@@ -43,6 +43,7 @@ typedef struct
     GX2ContextState *ctx;
     WIIU_RenderAllocData *listfree;
     float u_viewSize[4];
+    SDL_Texture windowTex;
 } WIIU_RenderData;
 
 typedef struct

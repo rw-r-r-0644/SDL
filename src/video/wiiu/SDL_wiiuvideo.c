@@ -275,9 +275,9 @@ static SDL_VideoDevice *WIIU_CreateDevice(int devindex)
 	device->VideoQuit = WIIU_VideoQuit;
 	device->SetDisplayMode = WIIU_SetDisplayMode;
 	device->PumpEvents = WIIU_PumpEvents;
-	device->CreateWindowFramebuffer = WIIU_CreateWindowFramebuffer;
-	device->UpdateWindowFramebuffer = WIIU_UpdateWindowFramebuffer;
-	device->DestroyWindowFramebuffer = WIIU_DestroyWindowFramebuffer;
+	//device->CreateWindowFramebuffer = WIIU_CreateWindowFramebuffer;
+	//device->UpdateWindowFramebuffer = WIIU_UpdateWindowFramebuffer;
+	//device->DestroyWindowFramebuffer = WIIU_DestroyWindowFramebuffer;
 
 	device->free = WIIU_DeleteDevice;
 
