@@ -259,7 +259,7 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
     return 0;
 }
 
-void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
+/*void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     SDL_Window *window = renderer->window;
@@ -273,7 +273,7 @@ void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
     }
 
     WIIU_FreeRenderData(data);
-}
+}*/
 
 int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
 {

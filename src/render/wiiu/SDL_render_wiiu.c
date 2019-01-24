@@ -42,14 +42,8 @@ SDL_RenderDriver WIIU_RenderDriver;
 
 SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
 {
-    SDL_Surface *surface;
     SDL_Renderer *renderer;
     WIIU_RenderData *data;
-
-    surface = SDL_GetWindowSurface(window);
-    if (!surface) {
-        return NULL;
-    }
 
     renderer = (SDL_Renderer *) SDL_calloc(1, sizeof(*renderer));
     if (!renderer) {
@@ -108,6 +102,13 @@ SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
     memset(data->ctx, 0, sizeof(GX2ContextState));
     GX2SetupContextStateEx(data->ctx, TRUE);
 
+    // Allocate a buffer for the window
+    data->windowTex = (SDL_Texture) {
+        .format = SDL_PIXELFORMAT_RGBA8888,
+    };
+    SDL_GetWindowSize(window, &data->windowTex.w, &data->windowTex.h);
+    WIIU_SDL_CreateTexture(renderer, &data->windowTex);
+
     // Setup colour buffer, rendering to the window
     WIIU_SDL_SetRenderTarget(renderer, NULL);
 
@@ -126,8 +127,8 @@ int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
         target = &tdata->texture.surface;
     } else {
         // Set window texture as target
-        WIIU_WindowData *wdata = (WIIU_WindowData *) SDL_GetWindowData(renderer->window, WIIU_WINDOW_DATA);
-        target = &wdata->texture.surface;
+        WIIU_TextureData *tdata = (WIIU_TextureData *) data->windowTex.driverdata;
+        target = &tdata->texture.surface;
     }
 
     // Update color buffer
