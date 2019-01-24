@@ -176,6 +176,7 @@ static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 			SDL_SendTouch(0, 0, SDL_FALSE,
 					(float) last_touch_x / 1280.0f,
 					(float) last_touch_y / 720.0f, 1);
+			last_touched = 0;
 		}
 
 		/* axys */
