@@ -242,6 +242,11 @@ static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window)
 	SDL_free(data);
 }
 
+static int WIIU_CreateSDLWindow(_THIS, SDL_Window *window) {
+	SDL_SetKeyboardFocus(window);
+	return 0;
+}
+
 static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
 {
 	return 0;
@@ -275,6 +280,7 @@ static SDL_VideoDevice *WIIU_CreateDevice(int devindex)
 	device->VideoQuit = WIIU_VideoQuit;
 	device->SetDisplayMode = WIIU_SetDisplayMode;
 	device->PumpEvents = WIIU_PumpEvents;
+	device->CreateSDLWindow = WIIU_CreateSDLWindow;
 	//device->CreateWindowFramebuffer = WIIU_CreateWindowFramebuffer;
 	//device->UpdateWindowFramebuffer = WIIU_UpdateWindowFramebuffer;
 	//device->DestroyWindowFramebuffer = WIIU_DestroyWindowFramebuffer;
