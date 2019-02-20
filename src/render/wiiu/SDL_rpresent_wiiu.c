@@ -47,6 +47,7 @@ static void render_scene(WIIU_RenderData *data) {
         0.0f, 0.0f,
     };
     memcpy(a_texCoord, a_texCoord_vals, sizeof(float) * 2 * 4);
+    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_texCoord, sizeof(float) * 2 * 4);
 
     WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     wiiuSetTextureShader();
