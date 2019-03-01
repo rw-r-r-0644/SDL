@@ -200,6 +200,7 @@ static void render_scene(WIIU_WindowData *data) {
 static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects)
 {
 	WIIU_WindowData *data = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_WINDOW_DATA);
+	Uint32 flags = SDL_GetWindowFlags(window);
 	float a_position[8];
 	float* buffer;
 	int x, y, w, h;
@@ -221,13 +222,17 @@ static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rec
 
 	WHBGfxBeginRender();
 
-	WHBGfxBeginRenderTV();
-	render_scene(data);
-	WHBGfxFinishRenderTV();
+	if (!(flags & SDL_WINDOW_WIIU_GAMEPAD_ONLY)) {
+		WHBGfxBeginRenderTV();
+		render_scene(data);
+		WHBGfxFinishRenderTV();
+	}
 
-	WHBGfxBeginRenderDRC();
-	render_scene(data);
-	WHBGfxFinishRenderDRC();
+	if (!(flags & SDL_WINDOW_WIIU_TV_ONLY)) {
+		WHBGfxBeginRenderDRC();
+		render_scene(data);
+		WHBGfxFinishRenderDRC();
+	}
 
 	WHBGfxFinishRender();
 
