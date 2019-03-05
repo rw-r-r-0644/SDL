@@ -29,11 +29,12 @@
 #include "SDL_pixels.h"
 #include <gx2/context.h>
 #include <gx2/sampler.h>
+#include <gx2r/buffer.h>
 
 typedef struct
 {
     void *next;
-    int ptr[];
+    GX2RBuffer buffer;
 } WIIU_RenderAllocData;
 
 //Driver internal data structures
@@ -53,17 +54,25 @@ typedef struct
     float u_texSize[4];
 } WIIU_TextureData;
 
-static inline void *WIIU_AllocRenderData(WIIU_RenderData *r, size_t size) {
-    WIIU_RenderAllocData *rdata = SDL_malloc(sizeof(WIIU_RenderAllocData) + size);
+static inline GX2RBuffer* WIIU_AllocRenderData(WIIU_RenderData *r, GX2RBuffer buffer) {
+    WIIU_RenderAllocData *rdata = SDL_malloc(sizeof(WIIU_RenderAllocData));
+
+    rdata->buffer = buffer;
+    if (!GX2RCreateBuffer(&rdata->buffer)) {
+        SDL_free(rdata);
+        return 0;
+    }
+
     rdata->next = r->listfree;
     r->listfree = rdata;
-    return (void *)rdata->ptr;
+    return &rdata->buffer;
 }
 
 static inline void WIIU_FreeRenderData(WIIU_RenderData *r) {
     while (r->listfree) {
-        void *ptr = r->listfree;
+        WIIU_RenderAllocData *ptr = r->listfree;
         r->listfree = r->listfree->next;
+        GX2RDestroyBufferEx(&ptr->buffer, 0);
         SDL_free(ptr);
     }
 }

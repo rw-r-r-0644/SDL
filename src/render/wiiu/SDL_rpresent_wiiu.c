@@ -11,43 +11,66 @@
 #include <whb/gfx.h>
 #include <gx2/draw.h>
 #include <gx2/state.h>
+#include <gx2r/buffer.h>
+#include <gx2r/draw.h>
 
 #define SCREEN_WIDTH    1280
 #define SCREEN_HEIGHT   720
 
 static const float u_viewSize[4] = {(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT};
-static const float u_mod[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-
-//TODO
-static const float a_position[2 * 4] = {
-    0.0f, 0.0f,
-    1280.0f, 0.0f,
-    1280.0f, 720.0f,
-    0.0f, 720.0f,
-};
-
-static const float a_texCoorssd[] =
-{
-    0.0f,               (float)SCREEN_HEIGHT,
-    (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT,
-    (float)SCREEN_WIDTH, 0.0f,
-    0.0f,               0.0f,
-};
 
 static void render_scene(WIIU_RenderData *data) {
     WIIU_TextureData *tdata = (WIIU_TextureData *) data->windowTex.driverdata;
     float tex_w = tdata->u_texSize[0];
     float tex_h = tdata->u_texSize[1];
+    GX2RBuffer *a_position, *a_texCoord;
+    float *a_position_vals, *a_texCoord_vals;
+    float u_mod[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-    float* a_texCoord = WIIU_AllocRenderData(data, sizeof(float) * 2 * 4);
-    float a_texCoord_vals[] = {
-        0.0f, tex_h,
-        tex_w, tex_h,
-        tex_w, 0.0f,
-        0.0f, 0.0f,
-    };
-    memcpy(a_texCoord, a_texCoord_vals, sizeof(float) * 2 * 4);
-    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, a_texCoord, sizeof(float) * 2 * 4);
+    /*  Allocate attribute buffers */
+    a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
+        .flags =
+            GX2R_RESOURCE_BIND_VERTEX_BUFFER |
+            GX2R_RESOURCE_USAGE_CPU_WRITE,
+        .elemSize = 2 * sizeof(float), // float x/y for each corner
+        .elemCount = 4, // 4 corners
+    });
+    a_texCoord = WIIU_AllocRenderData(data, (GX2RBuffer) {
+        .flags =
+            GX2R_RESOURCE_BIND_VERTEX_BUFFER |
+            GX2R_RESOURCE_USAGE_CPU_WRITE,
+        .elemSize = 2 * sizeof(float), // float x/y for each corner
+        .elemCount = 4, // 4 corners
+    });
+
+/*  Save them */
+    a_position_vals = GX2RLockBufferEx(a_position, 0);
+/*  TODO: not 720p. also, this is legal C? */
+    memcpy(
+        a_position_vals,
+        (float[]) {
+            0.0f, 0.0f,
+            1280.0f, 0.0f,
+            1280.0f, 720.0f,
+            0.0f, 720.0f,
+        },
+        a_position->elemSize * a_position->elemCount
+    );
+    GX2RUnlockBufferEx(a_position, 0);
+
+/*  Compute texture coords */
+    a_texCoord_vals = GX2RLockBufferEx(a_texCoord, 0);
+    memcpy(
+        a_texCoord_vals,
+        (float[]) {
+            0.0f, tex_h,
+            tex_w, tex_h,
+            tex_w, 0.0f,
+            0.0f, 0.0f,
+        },
+        a_texCoord->elemSize * a_position->elemCount
+    );
+    GX2RUnlockBufferEx(a_position, 0);
 
     WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     wiiuSetTextureShader();
@@ -56,8 +79,8 @@ static void render_scene(WIIU_RenderData *data) {
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)tdata->u_texSize);
     GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_mod);
 
-    GX2SetAttribBuffer(0, sizeof(float) * 8, sizeof(float) * 2, (void*)a_position);
-    GX2SetAttribBuffer(1, sizeof(float) * 8, sizeof(float) * 2, (void*)a_texCoord);
+    GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
+    GX2RSetAttributeBuffer(a_texCoord, 1, a_texCoord->elemSize, 0);
 
     GX2SetPixelTexture(&tdata->texture, wiiuTextureShader.pixelShader->samplerVars[0].location);
     GX2SetPixelSampler(&tdata->sampler, wiiuTextureShader.pixelShader->samplerVars[0].location);
