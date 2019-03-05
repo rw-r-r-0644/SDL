@@ -20,6 +20,13 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
+/* This is basically just a stub at this point - all the magic happens in
+ * SDL_Render, and the textureframebuffer stuff in SDL_video.c.
+ * Potentially more could/should be done here, video modes and things.
+ * Some design work will need to go into the responsibilities of render
+ * vs video.
+ */
+
 #include "../../SDL_internal.h"
 
 #if SDL_VIDEO_DRIVER_WIIU
@@ -34,16 +41,8 @@
 #include "../../events/SDL_keyboard_c.h"
 #include "SDL_wiiuvideo.h"
 
-#include <gfd.h>
-#include <gx2/draw.h>
-#include <gx2/shaders.h>
-#include <gx2/mem.h>
-#include <gx2/registers.h>
-#include <gx2r/draw.h>
-#include <gx2r/buffer.h>
 #include <whb/proc.h>
 #include <whb/gfx.h>
-#include <coreinit/memdefaultheap.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -53,66 +52,19 @@ static int WIIU_VideoInit(_THIS);
 static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
 static void WIIU_VideoQuit(_THIS);
 static void WIIU_PumpEvents(_THIS);
-static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch);
-static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects);
-static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window);
 
 #define SCREEN_WIDTH    1280
 #define SCREEN_HEIGHT   720
 
-static const float u_viewSize[4] = {(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT};
-static const float u_texSize[4] = {(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT};
-static const float u_mod[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-
-static const float tex_coord_vb[] =
-{
-	0.0f,                (float)SCREEN_HEIGHT,
-	(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT,
-	(float)SCREEN_WIDTH, 0.0f,
-	0.0f,                0.0f,
-};
-
-static GX2RBuffer tex_coord_buffer = {
-	GX2R_RESOURCE_BIND_VERTEX_BUFFER |
-	GX2R_RESOURCE_USAGE_CPU_READ |
-	GX2R_RESOURCE_USAGE_CPU_WRITE |
-	GX2R_RESOURCE_USAGE_GPU_READ,
-	2 * sizeof(float), 4, NULL
-};
-static GX2RBuffer position_buffer = {
-	GX2R_RESOURCE_BIND_VERTEX_BUFFER |
-	GX2R_RESOURCE_USAGE_CPU_READ |
-	GX2R_RESOURCE_USAGE_CPU_WRITE |
-	GX2R_RESOURCE_USAGE_GPU_READ,
-	2 * sizeof(float), 4, NULL
-};
-
-static GX2Sampler sampler = {0};
-
 static int WIIU_VideoInit(_THIS)
 {
 	SDL_DisplayMode mode;
-	void *buffer = NULL;
 
 	WHBProcInit();
 	WHBGfxInit();
 
 	// setup shader
 	wiiuInitTextureShader();
-
-	// setup vertex position attribute
-	GX2RCreateBuffer(&position_buffer);
-
-	// setup vertex texture coordinates attribute
-	GX2RCreateBuffer(&tex_coord_buffer);
-	buffer = GX2RLockBufferEx(&tex_coord_buffer, 0);
-	if (buffer) {
-		memcpy(buffer, tex_coord_vb, tex_coord_buffer.elemSize * tex_coord_buffer.elemCount);
-	}
-	GX2RUnlockBufferEx(&tex_coord_buffer, 0);
-
-	// initialize a sampler
-	GX2InitSampler(&sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_LINEAR);
 
 	// add default mode (1280x720)
 	mode.format = SDL_PIXELFORMAT_RGBA8888;
@@ -130,116 +82,9 @@ static int WIIU_VideoInit(_THIS)
 
 static void WIIU_VideoQuit(_THIS)
 {
-	GX2RDestroyBufferEx(&position_buffer, 0);
-	GX2RDestroyBufferEx(&tex_coord_buffer, 0);
     wiiuFreeTextureShader();
 	WHBGfxShutdown();
 	WHBProcShutdown();
-}
-
-static int WIIU_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format, void **pixels, int *pitch)
-{
-	WIIU_WindowData *data;
-
-	// hold a pointer to our stuff
-	data = SDL_calloc(1, sizeof(WIIU_WindowData));
-
-	// create a gx2 texture
-	data->texture.surface.use       = GX2_SURFACE_USE_TEXTURE;
-	data->texture.surface.width     = window->w;
-	data->texture.surface.height    = window->h;
-	data->texture.surface.dim       = GX2_SURFACE_DIM_TEXTURE_2D;
-	data->texture.surface.depth     = 1;
-	data->texture.surface.mipLevels = 1;
-	data->texture.surface.format    = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
-	data->texture.surface.tileMode  = GX2_TILE_MODE_LINEAR_ALIGNED;
-	data->texture.viewNumSlices     = 1;
-	data->texture.viewNumMips       = 1;
-	data->texture.compMap           = 0x00010203;
-	GX2CalcSurfaceSizeAndAlignment(&data->texture.surface);
-	GX2InitTextureRegs(&data->texture);
-
-	data->texture.surface.image = MEMAllocFromDefaultHeapEx(data->texture.surface.imageSize, data->texture.surface.alignment);
-
-	// create sdl surface framebuffer
-	data->surface = SDL_CreateRGBSurfaceWithFormatFrom(
-						data->texture.surface.image, // pixels
-						window->w, window->h, // width, height
-						32, window->w * 4, // depth, pitch
-						SDL_PIXELFORMAT_RGBA8888 // format
-					);
-
-	*format = SDL_PIXELFORMAT_RGBA8888;
-	*pixels = data->surface->pixels;
-	*pitch = data->surface->pitch;
-
-	SDL_SetWindowData(window, WIIU_WINDOW_DATA, data);
-
-	// inform SDL we're ready to accept inputs
-	SDL_SetKeyboardFocus(window);
-
-	return 0;
-}
-
-static void render_scene(WIIU_WindowData *data) {
-	WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	wiiuSetTextureShader();
-
-	GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)u_viewSize);
-	GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)u_texSize);
-	GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_mod);
-	GX2RSetAttributeBuffer(&position_buffer, 0, position_buffer.elemSize, 0);
-	GX2RSetAttributeBuffer(&tex_coord_buffer, 1, tex_coord_buffer.elemSize, 0);
-
-	GX2SetPixelTexture(&data->texture, wiiuTextureShader.pixelShader->samplerVars[0].location);
-	GX2SetPixelSampler(&sampler, wiiuTextureShader.pixelShader->samplerVars[0].location);
-
-	GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
-}
-
-static int WIIU_UpdateWindowFramebuffer(_THIS, SDL_Window *window, const SDL_Rect *rects, int numrects)
-{
-	WIIU_WindowData *data = (WIIU_WindowData *) SDL_GetWindowData(window, WIIU_WINDOW_DATA);
-	float a_position[8];
-	float* buffer;
-	int x, y, w, h;
-
-	SDL_GetWindowPosition(window, &x, &y);
-	SDL_GetWindowSize(window, &w, &h);
-	a_position[0] = (float)x;		a_position[1] = (float)y;
-	a_position[2] = (float)(x + w);	a_position[3] = (float)y;
-	a_position[4] = (float)(x + w);	a_position[5] = (float)(y + h);
-	a_position[6] = (float)x;		a_position[7] = (float)(y + h);
-
-	buffer = GX2RLockBufferEx(&position_buffer, 0);
-	if (buffer) {
-		memcpy(buffer, a_position, position_buffer.elemSize * position_buffer.elemCount);
-	}
-	GX2RUnlockBufferEx(&position_buffer, 0);
-
-	GX2Invalidate(GX2_INVALIDATE_MODE_CPU_TEXTURE, data->texture.surface.image, data->texture.surface.imageSize);
-
-	WHBGfxBeginRender();
-
-	WHBGfxBeginRenderTV();
-	render_scene(data);
-	WHBGfxFinishRenderTV();
-
-	WHBGfxBeginRenderDRC();
-	render_scene(data);
-	WHBGfxFinishRenderDRC();
-
-	WHBGfxFinishRender();
-
-	return 0;
-}
-
-static void WIIU_DestroyWindowFramebuffer(_THIS, SDL_Window *window)
-{
-	WIIU_WindowData *data = (WIIU_WindowData*) SDL_GetWindowData(window, WIIU_WINDOW_DATA);
-	SDL_FreeSurface(data->surface);
-	MEMFreeToDefaultHeap(data->texture.surface.image);
-	SDL_free(data);
 }
 
 static int WIIU_CreateSDLWindow(_THIS, SDL_Window *window) {
@@ -281,9 +126,6 @@ static SDL_VideoDevice *WIIU_CreateDevice(int devindex)
 	device->SetDisplayMode = WIIU_SetDisplayMode;
 	device->PumpEvents = WIIU_PumpEvents;
 	device->CreateSDLWindow = WIIU_CreateSDLWindow;
-	//device->CreateWindowFramebuffer = WIIU_CreateWindowFramebuffer;
-	//device->UpdateWindowFramebuffer = WIIU_UpdateWindowFramebuffer;
-	//device->DestroyWindowFramebuffer = WIIU_DestroyWindowFramebuffer;
 
 	device->free = WIIU_DeleteDevice;
 
