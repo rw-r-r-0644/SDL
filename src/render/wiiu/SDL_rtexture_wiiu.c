@@ -73,7 +73,9 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 /*  Allocate the texture's surface */
     res = GX2RCreateSurface(
         &tdata->texture.surface,
-        GX2R_RESOURCE_BIND_TEXTURE | GX2R_RESOURCE_BIND_COLOR_BUFFER
+        GX2R_RESOURCE_BIND_TEXTURE | GX2R_RESOURCE_BIND_COLOR_BUFFER |
+        GX2R_RESOURCE_USAGE_CPU_WRITE | GX2R_RESOURCE_USAGE_CPU_READ |
+        GX2R_RESOURCE_USAGE_GPU_WRITE | GX2R_RESOURCE_USAGE_GPU_READ
     );
     if (!res) {
         SDL_free(tdata);
@@ -102,11 +104,7 @@ int WIIU_SDL_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     Uint32 BytesPerPixel = SDL_BYTESPERPIXEL(texture->format);
     void* pixel_buffer;
 
-    pixel_buffer = GX2RLockSurfaceEx(
-        &tdata->texture.surface,
-        0, //mipmap level?
-        GX2R_RESOURCE_USAGE_CPU_READ | GX2R_RESOURCE_USAGE_CPU_WRITE
-    );
+    pixel_buffer = GX2RLockSurfaceEx(&tdata->texture.surface, 0, 0);
     if (!pixel_buffer) {
         //TODO real error handling
         printf("SDL: Couldn't lock surface for texture!\n");
