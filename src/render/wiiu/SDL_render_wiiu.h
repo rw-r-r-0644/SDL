@@ -128,6 +128,22 @@ static inline Uint32 TextureNextPow2(Uint32 w) {
     return n;
 }
 
+typedef struct {
+    union { float x, r; };
+    union { float y, g; };
+} WIIUVec2;
+typedef struct {
+    union { float x, r; };
+    union { float y, g; };
+    union { float z, b; };
+} WIIUVec3;
+typedef struct {
+    union { float x, r; };
+    union { float y, g; };
+    union { float z, b; };
+    union { float w, a; };
+} WIIUVec4;
+
 typedef struct WIIUPixFmt {
     GX2SurfaceFormat fmt;
     uint32_t compMap;
