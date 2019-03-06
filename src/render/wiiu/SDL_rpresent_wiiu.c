@@ -19,12 +19,15 @@
 
 static const float u_viewSize[4] = {(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT};
 
-static void render_scene(WIIU_RenderData *data) {
+static void render_scene(SDL_Renderer * renderer) {
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     WIIU_TextureData *tdata = (WIIU_TextureData *) data->windowTex.driverdata;
+
     float tex_w = tdata->u_texSize[0];
     float tex_h = tdata->u_texSize[1];
+    int win_x, win_y, win_w, win_h;
     GX2RBuffer *a_position, *a_texCoord;
-    float *a_position_vals, *a_texCoord_vals;
+    WIIUVec2 *a_position_vals, *a_texCoord_vals;
     float u_mod[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
     /*  Allocate attribute buffers */
@@ -32,44 +35,51 @@ static void render_scene(WIIU_RenderData *data) {
         .flags =
             GX2R_RESOURCE_BIND_VERTEX_BUFFER |
             GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = 2 * sizeof(float), // float x/y for each corner
+        .elemSize = sizeof(WIIUVec2), // float x/y for each corner
         .elemCount = 4, // 4 corners
     });
     a_texCoord = WIIU_AllocRenderData(data, (GX2RBuffer) {
         .flags =
             GX2R_RESOURCE_BIND_VERTEX_BUFFER |
             GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = 2 * sizeof(float), // float x/y for each corner
+        .elemSize = sizeof(WIIUVec2), // float x/y for each corner
         .elemCount = 4, // 4 corners
     });
 
-/*  Save them */
+/*  Calculate and save positions */
+    if (SDL_GetWindowFlags(renderer->window) & SDL_WINDOW_FULLSCREEN) {
+        win_x = 0;
+        win_y = 0;
+        win_w = SCREEN_WIDTH;
+        win_h = SCREEN_HEIGHT;
+    } else {
+    /*  Center */
+        SDL_GetWindowSize(renderer->window, &win_w, &win_h);
+        win_x = (SCREEN_WIDTH - win_w) / 2;
+        win_y = (SCREEN_HEIGHT - win_h) / 2;
+    }
+
     a_position_vals = GX2RLockBufferEx(a_position, 0);
-/*  TODO: not 720p. also, this is legal C? */
-    memcpy(
-        a_position_vals,
-        (float[]) {
-            0.0f, 0.0f,
-            1280.0f, 0.0f,
-            1280.0f, 720.0f,
-            0.0f, 720.0f,
-        },
-        a_position->elemSize * a_position->elemCount
-    );
+    a_position_vals[0] = (WIIUVec2) {
+        .x = win_x, .y = win_y
+    };
+    a_position_vals[1] = (WIIUVec2) {
+        .x = win_x + win_w, .y = win_y
+    };
+    a_position_vals[2] = (WIIUVec2) {
+        .x = win_x + win_w, .y = win_y + win_h
+    };
+    a_position_vals[3] = (WIIUVec2) {
+        .x = win_x, .y = win_y + win_h
+    };
     GX2RUnlockBufferEx(a_position, 0);
 
 /*  Compute texture coords */
     a_texCoord_vals = GX2RLockBufferEx(a_texCoord, 0);
-    memcpy(
-        a_texCoord_vals,
-        (float[]) {
-            0.0f, tex_h,
-            tex_w, tex_h,
-            tex_w, 0.0f,
-            0.0f, 0.0f,
-        },
-        a_texCoord->elemSize * a_position->elemCount
-    );
+    a_texCoord_vals[0] = (WIIUVec2) {.x = 0.0f,  .y = tex_h};
+    a_texCoord_vals[1] = (WIIUVec2) {.x = tex_w, .y = tex_h};
+    a_texCoord_vals[2] = (WIIUVec2) {.x = tex_w, .y = 0.0f};
+    a_texCoord_vals[3] = (WIIUVec2) {.x = 0.0f,  .y = 0.0f};
     GX2RUnlockBufferEx(a_position, 0);
 
     WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -98,11 +108,11 @@ void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
     WHBGfxBeginRender();
 
     WHBGfxBeginRenderTV();
-    render_scene(data);
+    render_scene(renderer);
     WHBGfxFinishRenderTV();
 
     WHBGfxBeginRenderDRC();
-    render_scene(data);
+    render_scene(renderer);
     WHBGfxFinishRenderDRC();
 
     WHBGfxFinishRender();
