@@ -118,6 +118,9 @@ void WIIU_SDL_RenderPresent(SDL_Renderer * renderer);
 void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture);
 void WIIU_SDL_DestroyRenderer(SDL_Renderer * renderer);
 
+//Driver internal functions
+void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window);
+
 //Utility/helper functions
 static inline Uint32 TextureNextPow2(Uint32 w) {
     Uint32 n = 2;
