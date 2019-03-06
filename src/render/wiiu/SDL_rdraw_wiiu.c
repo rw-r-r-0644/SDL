@@ -337,7 +337,7 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     GX2RBuffer *a_position;
-    float *a_position_vals;
+    WIIUVec2 *a_position_vals;
 
     /* Compute colours */
     WIIUVec4 u_colour = {
@@ -356,21 +356,29 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
         .flags =
             GX2R_RESOURCE_BIND_VERTEX_BUFFER |
             GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = 8 * sizeof(float),
-        .elemCount = count,
+        .elemSize = sizeof(WIIUVec2), // x/y float per corner
+        .elemCount = 4 * count, // 4 corners per square
     });
 
     /* Compute vertex positions */
     a_position_vals = GX2RLockBufferEx(a_position, 0);
     for (int i = 0; i < count; ++i) {
-        a_position_vals[i*8+0] = vx + rects[i].x;
-        a_position_vals[i*8+1] = vy + rects[i].y;
-        a_position_vals[i*8+2] = vx + rects[i].x + rects[i].w;
-        a_position_vals[i*8+3] = vy + rects[i].y;
-        a_position_vals[i*8+4] = vx + rects[i].x + rects[i].w;
-        a_position_vals[i*8+5] = vy + rects[i].y + rects[i].h;
-        a_position_vals[i*8+6] = vx + rects[i].x;
-        a_position_vals[i*8+7] = vy + rects[i].y + rects[i].h;
+        a_position_vals[i*4 + 0] = (WIIUVec2) {
+            .x = vx + rects[i].x,
+            .y = vy + rects[i].y,
+        };
+        a_position_vals[i*4 + 1] = (WIIUVec2) {
+            .x = vx + rects[i].x + rects[i].w,
+            .y = vy + rects[i].y,
+        };
+        a_position_vals[i*4 + 2] = (WIIUVec2) {
+            .x = vx + rects[i].x + rects[i].w,
+            .y = vy + rects[i].y + rects[i].h,
+        };
+        a_position_vals[i*4 + 3] = (WIIUVec2) {
+            .x = vx + rects[i].x,
+            .y = vy + rects[i].y + rects[i].h,
+        };
     }
     GX2RUnlockBufferEx(a_position, 0);
 
