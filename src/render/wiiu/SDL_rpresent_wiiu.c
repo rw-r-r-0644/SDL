@@ -80,7 +80,7 @@ static void render_scene(SDL_Renderer * renderer) {
     a_texCoord_vals[1] = (WIIUVec2) {.x = tex_w, .y = tex_h};
     a_texCoord_vals[2] = (WIIUVec2) {.x = tex_w, .y = 0.0f};
     a_texCoord_vals[3] = (WIIUVec2) {.x = 0.0f,  .y = 0.0f};
-    GX2RUnlockBufferEx(a_position, 0);
+    GX2RUnlockBufferEx(a_texCoord, 0);
 
     WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     wiiuSetTextureShader();
