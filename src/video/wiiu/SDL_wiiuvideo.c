@@ -88,8 +88,74 @@ static void WIIU_VideoQuit(_THIS)
 }
 
 static int WIIU_CreateSDLWindow(_THIS, SDL_Window *window) {
+	WIIU_VideoDeviceData* ddata = (WIIU_VideoDeviceData*) _this->driverdata;
+
+	/* If this window wants to be mirrored (no _ONLY flags) */
+	if (!(window->flags &
+		(SDL_WINDOW_WIIU_TV_ONLY | SDL_WINDOW_WIIU_GAMEPAD_ONLY))) {
+		/* Only one window can exist in this state */
+		if (ddata->drc_window_exists ||
+			ddata->tv_window_exists ||
+			ddata->mirrored_window_exists) {
+			return SDL_SetError(
+				"WiiU only supports one window when mirroring the TV and "
+				"Gamepad. https://github.com/yawut/SDL/wiki/Custom-Window-Flags"
+			);
+		}
+
+		/* Okay! */
+		ddata->mirrored_window_exists = SDL_TRUE;
+
+	/* If this window wants the TV */
+	} else if (window->flags & SDL_WINDOW_WIIU_TV_ONLY) {
+		/* Check if a TV window already exists */
+		if (ddata->tv_window_exists) {
+			return SDL_SetError(
+				"WiiU only supports one window on the TV. "
+				"https://github.com/yawut/SDL/wiki/Custom-Window-Flags"
+			);
+		/* Check if a mirrored window exists */
+		} else if (ddata->mirrored_window_exists) {
+			return SDL_SetError(
+				"WiiU only supports one window when mirroring the TV and "
+				"Gamepad. https://github.com/yawut/SDL/wiki/Custom-Window-Flags"
+			);
+		}
+
+		ddata->tv_window_exists = SDL_TRUE;
+
+	/* If this window wants the Gamepad */
+	} else if (window->flags & SDL_WINDOW_WIIU_GAMEPAD_ONLY) {
+		/* Check if a TV window already exists */
+		if (ddata->drc_window_exists) {
+			return SDL_SetError(
+				"WiiU only supports one window on the Gamepad. "
+				"https://github.com/yawut/SDL/wiki/Custom-Window-Flags"
+			);
+		/* Check if a mirrored window exists */
+		} else if (ddata->mirrored_window_exists) {
+			return SDL_SetError(
+				"WiiU only supports one window when mirroring the TV and "
+				"Gamepad. https://github.com/yawut/SDL/wiki/Custom-Window-Flags"
+			);
+		}
+
+		ddata->drc_window_exists = SDL_TRUE;
+	}
 	SDL_SetKeyboardFocus(window);
 	return 0;
+}
+
+static void WIIU_DestroyWindow(_THIS, SDL_Window * window) {
+	WIIU_VideoDeviceData* ddata = (WIIU_VideoDeviceData*) _this->driverdata;
+
+	if (window->flags & SDL_WINDOW_WIIU_TV_ONLY) {
+		ddata->tv_window_exists = SDL_FALSE;
+	} else if (window->flags & SDL_WINDOW_WIIU_GAMEPAD_ONLY) {
+		ddata->drc_window_exists = SDL_FALSE;
+	} else {
+		ddata->mirrored_window_exists = SDL_FALSE;
+	}
 }
 
 static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
@@ -108,6 +174,7 @@ static int WIIU_Available(void)
 
 static void WIIU_DeleteDevice(SDL_VideoDevice *device)
 {
+	SDL_free(device->driverdata);
 	SDL_free(device);
 }
 
@@ -121,11 +188,19 @@ static SDL_VideoDevice *WIIU_CreateDevice(int devindex)
 		return NULL;
 	}
 
+	device->driverdata = (void*) SDL_calloc(1, sizeof(WIIU_VideoDeviceData));
+	if (!device->driverdata) {
+		SDL_OutOfMemory();
+		SDL_free(device);
+		return NULL;
+	}
+
 	device->VideoInit = WIIU_VideoInit;
 	device->VideoQuit = WIIU_VideoQuit;
 	device->SetDisplayMode = WIIU_SetDisplayMode;
 	device->PumpEvents = WIIU_PumpEvents;
 	device->CreateSDLWindow = WIIU_CreateSDLWindow;
+	device->DestroyWindow = WIIU_DestroyWindow;
 
 	device->free = WIIU_DeleteDevice;
 
