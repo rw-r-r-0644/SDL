@@ -51,7 +51,12 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         return SDL_OutOfMemory();
 
     // Setup sampler
-    GX2InitSampler(&tdata->sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_LINEAR);
+    if (texture->scaleMode == SDL_ScaleModeNearest) {
+        GX2InitSampler(&tdata->sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_POINT);
+    } else {
+        GX2InitSampler(&tdata->sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_LINEAR);
+    }
+
 
     gx2_fmt = SDLFormatToWIIUFormat(texture->format);
 
