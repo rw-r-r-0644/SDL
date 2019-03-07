@@ -101,19 +101,22 @@ static void render_scene(SDL_Renderer * renderer) {
 void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    //SDL_Window *window = renderer->window;
-
-    //GX2Flush();
+    Uint32 flags = SDL_GetWindowFlags(renderer->window);
 
     WHBGfxBeginRender();
 
-    WHBGfxBeginRenderTV();
-    render_scene(renderer);
-    WHBGfxFinishRenderTV();
+/*  Only render to TV if the window is *not* drc-only */
+    if (!(flags & SDL_WINDOW_WIIU_GAMEPAD_ONLY)) {
+        WHBGfxBeginRenderTV();
+        render_scene(renderer);
+        WHBGfxFinishRenderTV();
+    }
 
-    WHBGfxBeginRenderDRC();
-    render_scene(renderer);
-    WHBGfxFinishRenderDRC();
+    if (!(flags & SDL_WINDOW_WIIU_TV_ONLY)) {
+        WHBGfxBeginRenderDRC();
+        render_scene(renderer);
+        WHBGfxFinishRenderDRC();
+    }
 
     WHBGfxFinishRender();
 
