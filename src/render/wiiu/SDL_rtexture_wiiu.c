@@ -66,14 +66,16 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     tdata->texture.surface.depth = 1; //?
     tdata->texture.surface.dim = GX2_SURFACE_DIM_TEXTURE_2D;
     tdata->texture.surface.tileMode = GX2_TILE_MODE_LINEAR_ALIGNED;
-    tdata->texture.surface.use =
-        GX2_SURFACE_USE_TEXTURE | GX2_SURFACE_USE_COLOR_BUFFER;
     tdata->texture.surface.mipLevels = 1;
     tdata->texture.viewNumMips = 1;
     tdata->texture.viewNumSlices = 1;
     tdata->texture.compMap = gx2_fmt.compMap;
     GX2CalcSurfaceSizeAndAlignment(&tdata->texture.surface);
     GX2InitTextureRegs(&tdata->texture);
+
+    tdata->cbuf.surface = tdata->texture.surface;
+    tdata->cbuf.viewNumSlices = 1;
+    GX2InitColorBufferRegs(&tdata->cbuf);
 
 /*  Allocate the texture's surface */
     res = GX2RCreateSurface(
@@ -87,12 +89,21 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         return SDL_OutOfMemory();
     }
 
+/*  Allocate a colour buffer, using the same backing buffer */
+    res = GX2RCreateSurfaceUserMemory(
+        &tdata->cbuf.surface,
+        tdata->texture.surface.image,
+        tdata->texture.surface.mipmaps,
+        tdata->texture.surface.resourceFlags
+    );
+    if (!res) {
+        GX2RDestroySurfaceEx(&tdata->texture.surface, 0);
+        SDL_free(tdata);
+        return SDL_OutOfMemory();
+    }
+
     tdata->u_texSize[0] = texture->w;
     tdata->u_texSize[1] = texture->h;
-    GX2Invalidate(
-        GX2_INVALIDATE_MODE_CPU,
-        &tdata->u_texSize, sizeof(tdata->u_texSize)
-    );
 
     texture->driverdata = tdata;
 
@@ -171,6 +182,7 @@ void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     if (texture == NULL || texture->driverdata == NULL) return;
 
     tdata = (WIIU_TextureData *) texture->driverdata;
+    GX2RDestroySurfaceEx(&tdata->cbuf.surface, 0);
     GX2RDestroySurfaceEx(&tdata->texture.surface, 0);
 
     SDL_free(tdata);
