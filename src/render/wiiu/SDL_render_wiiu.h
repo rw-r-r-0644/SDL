@@ -40,7 +40,6 @@ typedef struct
 //Driver internal data structures
 typedef struct
 {
-    GX2ColorBuffer cbuf;
     GX2ContextState *ctx;
     WIIU_RenderAllocData *listfree;
     float u_viewSize[4];
@@ -51,6 +50,7 @@ typedef struct
 {
     GX2Sampler sampler;
     GX2Texture texture;
+    GX2ColorBuffer cbuf;
     float u_texSize[4];
 } WIIU_TextureData;
 
@@ -151,6 +151,13 @@ typedef struct WIIUPixFmt {
     GX2SurfaceFormat fmt;
     uint32_t compMap;
 } WIIUPixFmt;
+
+static inline SDL_Texture* WIIU_GetRenderTarget(SDL_Renderer* renderer) {
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+
+    if (renderer->target) return renderer->target;
+    return &data->windowTex;
+}
 
 static inline WIIUPixFmt SDLFormatToWIIUFormat(Uint32 format) {
     WIIUPixFmt outFmt = { /* sane defaults? */

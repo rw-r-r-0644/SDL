@@ -131,37 +131,30 @@ int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
 
-    GX2Surface *target;
+    GX2ColorBuffer *target;
 
     if (texture) {
         // Set texture as target
         WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
-        target = &tdata->texture.surface;
+        target = &tdata->cbuf;
     } else {
         // Set window texture as target
         WIIU_TextureData *tdata = (WIIU_TextureData *) data->windowTex.driverdata;
-        target = &tdata->texture.surface;
+        target = &tdata->cbuf;
     }
 
-    // Update color buffer
-    memset(&data->cbuf, 0, sizeof(data->cbuf));
-    memcpy(&data->cbuf.surface, target, sizeof(GX2Surface));
-    data->cbuf.surface.use = GX2_SURFACE_USE_TEXTURE | GX2_SURFACE_USE_COLOR_BUFFER;
-    data->cbuf.viewNumSlices = 1;
-    GX2InitColorBufferRegs(&data->cbuf);
-
     // Update u_viewSize
-    data->u_viewSize[0] = data->cbuf.surface.width;
-    data->u_viewSize[1] = data->cbuf.surface.height;
+    data->u_viewSize[0] = target->surface.width;
+    data->u_viewSize[1] = target->surface.height;
 
     // Update context state
     GX2SetContextState(data->ctx);
-    GX2SetColorBuffer(&data->cbuf, GX2_RENDER_TARGET_0);
+    GX2SetColorBuffer(target, GX2_RENDER_TARGET_0);
     // These may be unnecessary - see SDL_render.c: SDL_SetRenderTarget's calls
     // to UpdateViewport and UpdateClipRect. TODO for once the render is
     // basically working.
-    GX2SetViewport(0, 0, (float)data->cbuf.surface.width, (float)data->cbuf.surface.height, 0.0f, 1.0f);
-    GX2SetScissor(0, 0, (float)data->cbuf.surface.width, (float)data->cbuf.surface.height);
+    GX2SetViewport(0, 0, (float)target->surface.width, (float)target->surface.height, 0.0f, 1.0f);
+    GX2SetScissor(0, 0, (float)target->surface.width, (float)target->surface.height);
 
     GX2SetAlphaTest(TRUE, GX2_COMPARE_FUNC_GREATER, 0.0f);
     GX2SetDepthOnlyControl(FALSE, FALSE, GX2_COMPARE_FUNC_NEVER);
@@ -194,6 +187,9 @@ int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
                               Uint32 format, void * pixels, int pitch)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    SDL_Texture* target = WIIU_GetRenderTarget(renderer);
+    WIIU_TextureData* tdata = (WIIU_TextureData*) target->driverdata;
+
     Uint32 src_format;
     void *src_pixels;
 
@@ -201,18 +197,18 @@ int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
      * SDL_RenderReadPixels.
      */
 
-    if (rect->x < 0 || rect->x+rect->w > data->cbuf.surface.width ||
-        rect->y < 0 || rect->y+rect->h > data->cbuf.surface.height) {
+    if (rect->x < 0 || rect->x+rect->w > tdata->cbuf.surface.width ||
+        rect->y < 0 || rect->y+rect->h > tdata->cbuf.surface.height) {
         return SDL_SetError("Tried to read outside of surface bounds");
     }
 
     src_format = SDL_PIXELFORMAT_RGBA8888; // TODO once working: other formats/checks
-    src_pixels = (void*)((Uint8 *) data->cbuf.surface.image +
-                         rect->y * data->cbuf.surface.pitch +
+    src_pixels = (void*)((Uint8 *) tdata->cbuf.surface.image +
+                         rect->y * tdata->cbuf.surface.pitch +
                          rect->x * 4);
 
     return SDL_ConvertPixels(rect->w, rect->h,
-                             src_format, src_pixels, data->cbuf.surface.pitch,
+                             src_format, src_pixels, tdata->cbuf.surface.pitch,
                              format, pixels, pitch);
 }
 

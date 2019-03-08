@@ -58,6 +58,10 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     WIIUVec4 u_mod;
     float x_min, y_min, x_max, y_max;
 
+    if (texture->access & SDL_TEXTUREACCESS_TARGET) {
+        GX2RInvalidateSurface(&tdata->texture.surface, 0, 0);
+    }
+
 /*  Allocate attribute buffers */
     a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
         .flags =
@@ -169,6 +173,10 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
             .y = (flip & SDL_FLIP_VERTICAL) ? y_min : y_max,
         },
     };
+
+    if (texture->access & SDL_TEXTUREACCESS_TARGET) {
+        GX2RInvalidateSurface(&tdata->texture.surface, 0, 0);
+    }
 
     /*  Allocate attribute buffers */
     a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
@@ -412,8 +420,10 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
 
 int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
 {
-    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    GX2ClearColor(&data->cbuf,
+    SDL_Texture* target = WIIU_GetRenderTarget(renderer);
+    WIIU_TextureData* tdata = (WIIU_TextureData*) target->driverdata;
+
+    GX2ClearColor(&tdata->cbuf,
                   (float)renderer->r / 255.0f,
                   (float)renderer->g / 255.0f,
                   (float)renderer->b / 255.0f,
