@@ -420,6 +420,7 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
 
 int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
 {
+    WIIU_RenderData* data = (WIIU_RenderData*) renderer->driverdata;
     SDL_Texture* target = WIIU_GetRenderTarget(renderer);
     WIIU_TextureData* tdata = (WIIU_TextureData*) target->driverdata;
 
@@ -428,6 +429,7 @@ int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
                   (float)renderer->g / 255.0f,
                   (float)renderer->b / 255.0f,
                   (float)renderer->a / 255.0f);
+    GX2SetContextState(data->ctx);
     return 0;
 }
 
