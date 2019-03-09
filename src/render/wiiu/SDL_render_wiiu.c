@@ -63,8 +63,8 @@ SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->WindowEvent = WIIU_SDL_WindowEvent;
     renderer->GetOutputSize = WIIU_SDL_GetOutputSize;
     renderer->CreateTexture = WIIU_SDL_CreateTexture;
-    //renderer->SetTextureColorMod = WIIU_SDL_SetTextureColorMod;
-    //renderer->SetTextureAlphaMod = WIIU_SDL_SetTextureAlphaMod;
+    renderer->SetTextureColorMod = WIIU_SDL_SetTextureColorMod;
+    renderer->SetTextureAlphaMod = WIIU_SDL_SetTextureAlphaMod;
     //renderer->SetTextureBlendMode = WIIU_SDL_SetTextureBlendMode;
     renderer->UpdateTexture = WIIU_SDL_UpdateTexture;
     renderer->LockTexture = WIIU_SDL_LockTexture;
@@ -122,6 +122,7 @@ void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window) {
     // Allocate a buffer for the window
     data->windowTex = (SDL_Texture) {
         .format = SDL_PIXELFORMAT_RGBA8888,
+        .r = 255, .g = 255, .b = 255, .a = 255,
     };
     SDL_GetWindowSize(window, &data->windowTex.w, &data->windowTex.h);
     WIIU_SDL_CreateTexture(renderer, &data->windowTex);

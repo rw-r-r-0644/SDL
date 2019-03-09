@@ -55,7 +55,6 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
     GX2RBuffer *a_position, *a_texCoord;
     WIIUVec2 *a_position_vals, *a_texCoord_vals;
-    WIIUVec4 u_mod;
     float x_min, y_min, x_max, y_max;
 
     if (texture->access & SDL_TEXTUREACCESS_TARGET) {
@@ -112,14 +111,6 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     };
     GX2RUnlockBufferEx(a_texCoord, 0);
 
-    /* Compute color/alpha mod */
-    u_mod = (WIIUVec4) {
-        .r = (float)texture->r / 255.0f,
-        .g = (float)texture->g / 255.0f,
-        .b = (float)texture->b / 255.0f,
-        .a = (float)texture->a / 255.0f,
-    };
-
     /* Render */
     GX2SetContextState(data->ctx);
     wiiuSetTextureShader();
@@ -129,7 +120,7 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2RSetAttributeBuffer(a_texCoord, 1, a_texCoord->elemSize, 0);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)&tdata->u_texSize);
-    GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t *)&u_mod);
+    GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t *)&tdata->u_mod);
     WIIU_SDL_SetGX2BlendMode(texture->blendMode);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
 
@@ -145,7 +136,6 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
     GX2RBuffer *a_position, *a_texCoord;
     WIIUVec2 *a_position_vals, *a_texCoord_vals;
-    WIIUVec4 u_mod;
 
     /* Compute real vertex points */
     float x_min = renderer->viewport.x + dstrect->x;
@@ -224,14 +214,6 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     };
     GX2RUnlockBufferEx(a_texCoord, 0);
 
-    /* Compute color/alpha mod */
-    u_mod = (WIIUVec4) {
-        .r = (float)texture->r / 255.0f,
-        .g = (float)texture->g / 255.0f,
-        .b = (float)texture->b / 255.0f,
-        .a = (float)texture->a / 255.0f,
-    };
-
     /* Render */
     GX2SetContextState(data->ctx);
     wiiuSetTextureShader();
@@ -241,7 +223,7 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2RSetAttributeBuffer(a_texCoord, 1, a_texCoord->elemSize, 0);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)&tdata->u_texSize);
-    GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t *)&u_mod);
+    GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t *)&tdata->u_mod);
     WIIU_SDL_SetGX2BlendMode(texture->blendMode);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
 

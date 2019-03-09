@@ -28,7 +28,6 @@ static void render_scene(SDL_Renderer * renderer) {
     int win_x, win_y, win_w, win_h;
     GX2RBuffer *a_position, *a_texCoord;
     WIIUVec2 *a_position_vals, *a_texCoord_vals;
-    float u_mod[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
     /*  Allocate attribute buffers */
     a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
@@ -87,7 +86,7 @@ static void render_scene(SDL_Renderer * renderer) {
 
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&u_viewSize);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)&tdata->u_texSize);
-    GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_mod);
+    GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)&tdata->u_mod);
 
     GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
     GX2RSetAttributeBuffer(a_texCoord, 1, a_texCoord->elemSize, 0);

@@ -68,6 +68,7 @@ typedef struct {
     GX2Texture texture;
     GX2ColorBuffer cbuf;
     WIIUVec4 u_texSize;
+    WIIUVec4 u_mod;
 } WIIU_TextureData;
 
 static inline GX2RBuffer* WIIU_AllocRenderData(WIIU_RenderData *r, GX2RBuffer buffer) {
@@ -99,13 +100,11 @@ void WIIU_SDL_WindowEvent(SDL_Renderer * renderer,
                              const SDL_WindowEvent *event);
 int WIIU_SDL_GetOutputSize(SDL_Renderer * renderer, int *w, int *h);
 int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture);
-// SDL changes colour/alpha/blend values internally, this is just to notify us.
-// We don't care yet. TODO: could update GX2RBuffers less frequently with these?
-/*int WIIU_SDL_SetTextureColorMod(SDL_Renderer * renderer,
+int WIIU_SDL_SetTextureColorMod(SDL_Renderer * renderer,
                                 SDL_Texture * texture);
 int WIIU_SDL_SetTextureAlphaMod(SDL_Renderer * renderer,
                                 SDL_Texture * texture);
-int WIIU_SDL_SetTextureBlendMode(SDL_Renderer * renderer,
+/*int WIIU_SDL_SetTextureBlendMode(SDL_Renderer * renderer,
                                  SDL_Texture * texture);*/
 int WIIU_SDL_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                        const SDL_Rect * rect, const void *pixels,
