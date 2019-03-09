@@ -112,7 +112,6 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2RUnlockBufferEx(a_texCoord, 0);
 
     /* Render */
-    GX2SetContextState(data->ctx);
     wiiuSetTextureShader();
     GX2SetPixelTexture(&tdata->texture, 0);
     GX2SetPixelSampler(&tdata->sampler, 0);
@@ -215,7 +214,6 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2RUnlockBufferEx(a_texCoord, 0);
 
     /* Render */
-    GX2SetContextState(data->ctx);
     wiiuSetTextureShader();
     GX2SetPixelTexture(&tdata->texture, 0);
     GX2SetPixelSampler(&tdata->sampler, 0);
@@ -265,7 +263,6 @@ int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points
     GX2RUnlockBufferEx(a_position, 0);
 
     /* Render points */
-    GX2SetContextState(data->ctx);
     wiiuSetColorShader();
     GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
@@ -312,7 +309,6 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
     GX2RUnlockBufferEx(a_position, 0);
 
     /* Render lines */
-    GX2SetContextState(data->ctx);
     wiiuSetColorShader();
     GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
@@ -373,7 +369,6 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
     GX2RUnlockBufferEx(a_position, 0);
 
     /* Render rects */
-    GX2SetContextState(data->ctx);
     wiiuSetColorShader();
     GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
@@ -411,7 +406,10 @@ int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
                   (float)renderer->g / 255.0f,
                   (float)renderer->b / 255.0f,
                   (float)renderer->a / 255.0f);
+
+    /* Restore SDL context state */
     GX2SetContextState(data->ctx);
+
     return 0;
 }
 

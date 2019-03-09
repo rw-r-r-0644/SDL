@@ -101,6 +101,12 @@ SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
     data->ctx = (GX2ContextState *) memalign(GX2_CONTEXT_STATE_ALIGNMENT, sizeof(GX2ContextState));
     memset(data->ctx, 0, sizeof(GX2ContextState));
     GX2SetupContextStateEx(data->ctx, TRUE);
+    GX2SetContextState(data->ctx);
+
+    // Setup some context state options
+    GX2SetAlphaTest(TRUE, GX2_COMPARE_FUNC_GREATER, 0.0f);
+    GX2SetDepthOnlyControl(FALSE, FALSE, GX2_COMPARE_FUNC_NEVER);
+    GX2SetCullOnlyControl(GX2_FRONT_FACE_CCW, FALSE, FALSE);
 
     // Make a texture for the window
     WIIU_SDL_CreateWindowTex(renderer, window);
@@ -151,17 +157,12 @@ int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
     };
 
     // Update context state
-    GX2SetContextState(data->ctx);
     GX2SetColorBuffer(target, GX2_RENDER_TARGET_0);
     // These may be unnecessary - see SDL_render.c: SDL_SetRenderTarget's calls
     // to UpdateViewport and UpdateClipRect. TODO for once the render is
     // basically working.
     GX2SetViewport(0, 0, (float)target->surface.width, (float)target->surface.height, 0.0f, 1.0f);
     GX2SetScissor(0, 0, (float)target->surface.width, (float)target->surface.height);
-
-    GX2SetAlphaTest(TRUE, GX2_COMPARE_FUNC_GREATER, 0.0f);
-    GX2SetDepthOnlyControl(FALSE, FALSE, GX2_COMPARE_FUNC_NEVER);
-    GX2SetCullOnlyControl(GX2_FRONT_FACE_CCW, FALSE, FALSE);
 
     return 0;
 }
