@@ -107,6 +107,13 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         .y = texture->h,
     };
 
+    tdata->u_mod = (WIIUVec4) {
+        .r = (float)texture->r / 255.0f,
+        .g = (float)texture->g / 255.0f,
+        .b = (float)texture->b / 255.0f,
+        .a = (float)texture->a / 255.0f,
+    };
+
     texture->driverdata = tdata;
 
     return 0;
@@ -176,6 +183,22 @@ int WIIU_SDL_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     WIIU_SDL_UnlockTexture(renderer, texture);
 
     return 0;
+}
+
+int WIIU_SDL_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
+{
+    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+    /* Compute color mod */
+    tdata->u_mod.r = (float)texture->r / 255.0f;
+    tdata->u_mod.g = (float)texture->g / 255.0f;
+    tdata->u_mod.b = (float)texture->b / 255.0f;
+}
+
+int WIIU_SDL_SetTextureAlphaMod(SDL_Renderer * renderer, SDL_Texture * texture)
+{
+    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+    /* Compute alpha mod */
+    tdata->u_mod.a = (float)texture->a / 255.0f;
 }
 
 void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
