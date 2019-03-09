@@ -31,6 +31,24 @@
 #include <gx2/sampler.h>
 #include <gx2r/buffer.h>
 
+typedef struct {
+    union { float x, r; };
+    union { float y, g; };
+} WIIUVec2;
+
+typedef struct {
+    union { float x, r; };
+    union { float y, g; };
+    union { float z, b; };
+} WIIUVec3;
+
+typedef struct {
+    union { float x, r; };
+    union { float y, g; };
+    union { float z, b; };
+    union { float w, a; };
+} WIIUVec4;
+
 typedef struct
 {
     void *next;
@@ -38,20 +56,18 @@ typedef struct
 } WIIU_RenderAllocData;
 
 //Driver internal data structures
-typedef struct
-{
+typedef struct {
     GX2ContextState *ctx;
     WIIU_RenderAllocData *listfree;
-    float u_viewSize[4];
+    WIIUVec4 u_viewSize;
     SDL_Texture windowTex;
 } WIIU_RenderData;
 
-typedef struct
-{
+typedef struct {
     GX2Sampler sampler;
     GX2Texture texture;
     GX2ColorBuffer cbuf;
-    float u_texSize[4];
+    WIIUVec4 u_texSize;
 } WIIU_TextureData;
 
 static inline GX2RBuffer* WIIU_AllocRenderData(WIIU_RenderData *r, GX2RBuffer buffer) {
@@ -130,22 +146,6 @@ static inline Uint32 TextureNextPow2(Uint32 w) {
         n <<= 1;
     return n;
 }
-
-typedef struct {
-    union { float x, r; };
-    union { float y, g; };
-} WIIUVec2;
-typedef struct {
-    union { float x, r; };
-    union { float y, g; };
-    union { float z, b; };
-} WIIUVec3;
-typedef struct {
-    union { float x, r; };
-    union { float y, g; };
-    union { float z, b; };
-    union { float w, a; };
-} WIIUVec4;
 
 typedef struct WIIUPixFmt {
     GX2SurfaceFormat fmt;

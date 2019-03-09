@@ -17,14 +17,14 @@
 #define SCREEN_WIDTH    1280
 #define SCREEN_HEIGHT   720
 
-static const float u_viewSize[4] = {(float)SCREEN_WIDTH, (float)SCREEN_HEIGHT};
+static const WIIUVec4 u_viewSize = {.x = (float)SCREEN_WIDTH, .y = (float)SCREEN_HEIGHT};
 
 static void render_scene(SDL_Renderer * renderer) {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     WIIU_TextureData *tdata = (WIIU_TextureData *) data->windowTex.driverdata;
 
-    float tex_w = tdata->u_texSize[0];
-    float tex_h = tdata->u_texSize[1];
+    float tex_w = tdata->u_texSize.x;
+    float tex_h = tdata->u_texSize.y;
     int win_x, win_y, win_w, win_h;
     GX2RBuffer *a_position, *a_texCoord;
     WIIUVec2 *a_position_vals, *a_texCoord_vals;
@@ -85,8 +85,8 @@ static void render_scene(SDL_Renderer * renderer) {
     WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     wiiuSetTextureShader();
 
-    GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)u_viewSize);
-    GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)tdata->u_texSize);
+    GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&u_viewSize);
+    GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)&tdata->u_texSize);
     GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t*)u_mod);
 
     GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
