@@ -189,7 +189,6 @@ void WIIU_SDL_DestroyRenderer(SDL_Renderer * renderer)
 int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
                               Uint32 format, void * pixels, int pitch)
 {
-    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     SDL_Texture* target = WIIU_GetRenderTarget(renderer);
     WIIU_TextureData* tdata = (WIIU_TextureData*) target->driverdata;
 

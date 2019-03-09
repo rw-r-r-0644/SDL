@@ -37,6 +37,7 @@
 #include <gx2/clear.h>
 #include <gx2/mem.h>
 #include <gx2/event.h>
+#include <gx2r/surface.h>
 #include <gx2r/buffer.h>
 #include <gx2r/draw.h>
 

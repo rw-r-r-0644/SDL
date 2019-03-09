@@ -9,8 +9,9 @@
 #include "SDL_render_wiiu.h"
 
 #include <whb/gfx.h>
-#include <gx2/draw.h>
+#include <gx2/registers.h>
 #include <gx2/state.h>
+#include <gx2/draw.h>
 #include <gx2r/buffer.h>
 #include <gx2r/draw.h>
 
