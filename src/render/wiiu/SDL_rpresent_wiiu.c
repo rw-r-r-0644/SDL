@@ -122,6 +122,9 @@ void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
     WHBGfxFinishRender();
 
     WIIU_FreeRenderData(data);
+
+/*  Restore SDL context state */
+    GX2SetContextState(data->ctx);
 }
 
 #endif //SDL_VIDEO_RENDER_WIIU
