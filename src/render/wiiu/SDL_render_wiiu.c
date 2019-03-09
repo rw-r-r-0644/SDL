@@ -144,8 +144,10 @@ int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
     }
 
     // Update u_viewSize
-    data->u_viewSize[0] = target->surface.width;
-    data->u_viewSize[1] = target->surface.height;
+    data->u_viewSize = (WIIUVec4) {
+        .x = (float)target->surface.width,
+        .y = (float)target->surface.height,
+    };
 
     // Update context state
     GX2SetContextState(data->ctx);

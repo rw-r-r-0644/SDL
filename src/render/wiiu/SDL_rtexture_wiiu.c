@@ -102,8 +102,10 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         return SDL_OutOfMemory();
     }
 
-    tdata->u_texSize[0] = texture->w;
-    tdata->u_texSize[1] = texture->h;
+    tdata->u_texSize = (WIIUVec4) {
+        .x = texture->w,
+        .y = texture->h,
+    };
 
     texture->driverdata = tdata;
 
