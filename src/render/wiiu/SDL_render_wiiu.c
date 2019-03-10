@@ -1,7 +1,7 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 2018-2018 Ash Logan <ash@heyquark.com>
-  Copyright (C) 2018-2018 Roberto Van Eeden <r.r.qwertyuiop.r.r@gmail.com>
+  Copyright (C) 2018-2019 Ash Logan <ash@heyquark.com>
+  Copyright (C) 2018-2019 Roberto Van Eeden <r.r.qwertyuiop.r.r@gmail.com>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,18 +26,12 @@
 #include "../../video/wiiu/SDL_wiiuvideo.h"
 #include "../../video/wiiu/wiiu_shaders.h"
 #include "../SDL_sysrender.h"
-#include "SDL_hints.h"
 #include "SDL_render_wiiu.h"
 
 #include <gx2/registers.h>
 #include <gx2r/surface.h>
 
 #include <malloc.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
 
 SDL_RenderDriver WIIU_RenderDriver;
 
@@ -59,14 +53,12 @@ SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
         return NULL;
     }
 
-    // See sdl_render_wiiu.h for explanations of commented-out functions
-
+    /* Setup renderer functions */
     renderer->WindowEvent = WIIU_SDL_WindowEvent;
     renderer->GetOutputSize = WIIU_SDL_GetOutputSize;
     renderer->CreateTexture = WIIU_SDL_CreateTexture;
     renderer->SetTextureColorMod = WIIU_SDL_SetTextureColorMod;
     renderer->SetTextureAlphaMod = WIIU_SDL_SetTextureAlphaMod;
-    //renderer->SetTextureBlendMode = WIIU_SDL_SetTextureBlendMode;
     renderer->UpdateTexture = WIIU_SDL_UpdateTexture;
     renderer->LockTexture = WIIU_SDL_LockTexture;
     renderer->UnlockTexture = WIIU_SDL_UnlockTexture;
@@ -87,38 +79,39 @@ SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->driverdata = data;
     renderer->window = window;
 
-    // Prepare shaders
+    /* Prepare shaders */
     wiiuInitTextureShader();
     wiiuInitColorShader();
 
-    // List of attibutes to free after render
+    /* List of attibutes to free after render */
     data->listfree = NULL;
 
-    // Setup line and point size
+    /* Setup line and point size */
     GX2SetLineWidth(1.0f);
     GX2SetPointSize(1.0f, 1.0f);
 
-    // Create a fresh context state
+    /* Create a fresh context state */
     data->ctx = (GX2ContextState *) memalign(GX2_CONTEXT_STATE_ALIGNMENT, sizeof(GX2ContextState));
-    memset(data->ctx, 0, sizeof(GX2ContextState));
+    SDL_memset(data->ctx, 0, sizeof(GX2ContextState));
     GX2SetupContextStateEx(data->ctx, TRUE);
     GX2SetContextState(data->ctx);
 
-    // Setup some context state options
+    /* Setup some context state options */
     GX2SetAlphaTest(TRUE, GX2_COMPARE_FUNC_GREATER, 0.0f);
     GX2SetDepthOnlyControl(FALSE, FALSE, GX2_COMPARE_FUNC_NEVER);
     GX2SetCullOnlyControl(GX2_FRONT_FACE_CCW, FALSE, FALSE);
 
-    // Make a texture for the window
+    /* Make a texture for the window */
     WIIU_SDL_CreateWindowTex(renderer, window);
 
-    // Setup colour buffer, rendering to the window
+    /* Setup colour buffer, rendering to the window */
     WIIU_SDL_SetRenderTarget(renderer, NULL);
 
     return renderer;
 }
 
-void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window) {
+void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window)
+{
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
 
     if (data->windowTex.driverdata) {
@@ -126,12 +119,15 @@ void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window) {
         data->windowTex = (SDL_Texture) {0};
     }
 
-    // Allocate a buffer for the window
+    /* Allocate a buffer for the window */
     data->windowTex = (SDL_Texture) {
         .format = SDL_PIXELFORMAT_RGBA8888,
         .r = 255, .g = 255, .b = 255, .a = 255,
     };
+
     SDL_GetWindowSize(window, &data->windowTex.w, &data->windowTex.h);
+
+    /* Setup texture and color buffer for the window */
     WIIU_SDL_CreateTexture(renderer, &data->windowTex);
 }
 
@@ -139,31 +135,24 @@ int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
 
-    GX2ColorBuffer *target;
+    /* Set window or texture as target */
+    WIIU_TextureData *tdata = (WIIU_TextureData *)((texture) ? texture->driverdata
+                                                             : data->windowTex.driverdata);
 
-    if (texture) {
-        // Set texture as target
-        WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
-        target = &tdata->cbuf;
-    } else {
-        // Set window texture as target
-        WIIU_TextureData *tdata = (WIIU_TextureData *) data->windowTex.driverdata;
-        target = &tdata->cbuf;
-    }
-
-    // Update u_viewSize
+    /* Update u_viewSize */
     data->u_viewSize = (WIIUVec4) {
-        .x = (float)target->surface.width,
-        .y = (float)target->surface.height,
+        .x = (float)tdata->cbuf.surface.width,
+        .y = (float)tdata->cbuf.surface.height,
     };
 
-    // Update context state
-    GX2SetColorBuffer(target, GX2_RENDER_TARGET_0);
-    // These may be unnecessary - see SDL_render.c: SDL_SetRenderTarget's calls
-    // to UpdateViewport and UpdateClipRect. TODO for once the render is
-    // basically working.
-    GX2SetViewport(0, 0, (float)target->surface.width, (float)target->surface.height, 0.0f, 1.0f);
-    GX2SetScissor(0, 0, (float)target->surface.width, (float)target->surface.height);
+    /* Update context state */
+    GX2SetColorBuffer(&tdata->cbuf, GX2_RENDER_TARGET_0);
+
+    /* These may be unnecessary - see SDL_render.c: SDL_SetRenderTarget's calls
+       to UpdateViewport and UpdateClipRect. TODO for once the render is
+       basically working */
+    GX2SetViewport(0, 0, (float)tdata->cbuf.surface.width, (float)tdata->cbuf.surface.height, 0.0f, 1.0f);
+    GX2SetScissor(0, 0, (float)tdata->cbuf.surface.width, (float)tdata->cbuf.surface.height);
 
     return 0;
 }
@@ -192,8 +181,7 @@ int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
     int ret;
 
     /* NOTE: The rect is already adjusted according to the viewport by
-     * SDL_RenderReadPixels.
-     */
+       SDL_RenderReadPixels */
 
     if (rect->x < 0 || rect->x+rect->w > tdata->cbuf.surface.width ||
         rect->y < 0 || rect->y+rect->h > tdata->cbuf.surface.height) {
@@ -202,10 +190,11 @@ int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
 
     src_image = GX2RLockSurfaceEx(&tdata->cbuf.surface, 0, GX2R_RESOURCE_LOCKED_READ_ONLY);
 
+    /* Convert and copy the pixels to target buffer */
     ret = SDL_ConvertPixels(rect->w, rect->h, target->format,
-                                src_image + rect->y * tdata->cbuf.surface.pitch + rect->x * 4,
-                                tdata->cbuf.surface.pitch,
-                                format, pixels, pitch);
+                            src_image + rect->y * tdata->cbuf.surface.pitch + rect->x * 4,
+                            tdata->cbuf.surface.pitch,
+                            format, pixels, pitch);
 
     GX2RUnlockSurfaceEx(&tdata->cbuf.surface, 0, GX2R_RESOURCE_LOCKED_READ_ONLY);
 
@@ -213,7 +202,8 @@ int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
 }
 
 
-SDL_RenderDriver WIIU_RenderDriver = {
+SDL_RenderDriver WIIU_RenderDriver =
+{
     .CreateRenderer = WIIU_SDL_CreateRenderer,
     .info = {
         .name = "WiiU GX2",

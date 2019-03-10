@@ -1,7 +1,7 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 2018-2018 Ash Logan <ash@heyquark.com>
-  Copyright (C) 2018-2018 Roberto Van Eeden <r.r.qwertyuiop.r.r@gmail.com>
+  Copyright (C) 2018-2019 Ash Logan <ash@heyquark.com>
+  Copyright (C) 2018-2019 Roberto Van Eeden <r.r.qwertyuiop.r.r@gmail.com>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,9 +23,7 @@
 
 #if SDL_VIDEO_RENDER_WIIU
 
-#include "../../video/wiiu/SDL_wiiuvideo.h"
 #include "../SDL_sysrender.h"
-#include "SDL_hints.h"
 #include "SDL_render_wiiu.h"
 
 #include <gx2/context.h>
@@ -36,21 +34,18 @@
 #include <gx2r/resource.h>
 
 #include <malloc.h>
-#include <stdio.h>
 #include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
 
 int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     WIIUPixFmt gx2_fmt;
     BOOL res;
     WIIU_TextureData *tdata = (WIIU_TextureData *) SDL_calloc(1, sizeof(*tdata));
-    if (!tdata)
+    if (!tdata) {
         return SDL_OutOfMemory();
+    }
 
-    // Setup sampler
+    /* Setup sampler */
     if (texture->scaleMode == SDL_ScaleModeNearest) {
         GX2InitSampler(&tdata->sampler, GX2_TEX_CLAMP_MODE_CLAMP, GX2_TEX_XY_FILTER_MODE_POINT);
     } else {
@@ -60,10 +55,11 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 
     gx2_fmt = SDLFormatToWIIUFormat(texture->format);
 
+    /* Setup GX2Texture */
     tdata->texture.surface.width = texture->w;
     tdata->texture.surface.height = texture->h;
     tdata->texture.surface.format = gx2_fmt.fmt;
-    tdata->texture.surface.depth = 1; //?
+    tdata->texture.surface.depth = 1;
     tdata->texture.surface.dim = GX2_SURFACE_DIM_TEXTURE_2D;
     tdata->texture.surface.tileMode = GX2_TILE_MODE_LINEAR_ALIGNED;
     tdata->texture.surface.mipLevels = 1;
@@ -73,11 +69,12 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     GX2CalcSurfaceSizeAndAlignment(&tdata->texture.surface);
     GX2InitTextureRegs(&tdata->texture);
 
+    /* Setup GX2ColorBuffer */
     tdata->cbuf.surface = tdata->texture.surface;
     tdata->cbuf.viewNumSlices = 1;
     GX2InitColorBufferRegs(&tdata->cbuf);
 
-/*  Allocate the texture's surface */
+    /* Allocate the texture's surface */
     res = GX2RCreateSurface(
         &tdata->texture.surface,
         GX2R_RESOURCE_BIND_TEXTURE | GX2R_RESOURCE_BIND_COLOR_BUFFER |
@@ -89,7 +86,7 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         return SDL_OutOfMemory();
     }
 
-/*  Allocate a colour buffer, using the same backing buffer */
+    /* Allocate a colour buffer, using the same backing buffer */
     res = GX2RCreateSurfaceUserMemory(
         &tdata->cbuf.surface,
         tdata->texture.surface.image,
@@ -102,11 +99,13 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         return SDL_OutOfMemory();
     }
 
+    /* Initialize texture size uniform */
     tdata->u_texSize = (WIIUVec4) {
         .x = texture->w,
         .y = texture->h,
     };
 
+    /* Initialize color modifier uniform */
     tdata->u_mod = (WIIUVec4) {
         .r = (float)texture->r / 255.0f,
         .g = (float)texture->g / 255.0f,
@@ -119,60 +118,44 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     return 0;
 }
 
-// Somewhat adapted from SDL_render.c: SDL_LockTextureNative
-// The app basically wants a pointer to a particular rectangle as well as
-// write access to it. Easy GX2R!
+/* Somewhat adapted from SDL_render.c: SDL_LockTextureNative
+   The app basically wants a pointer to a particular rectangle as well as
+   write access to it. Easy GX2R! */
 int WIIU_SDL_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                          const SDL_Rect * rect, void **pixels, int *pitch)
 {
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
     Uint32 BytesPerPixel = SDL_BYTESPERPIXEL(texture->format);
-    void* pixel_buffer;
+    void* pixel_buffer = GX2RLockSurfaceEx(&tdata->texture.surface, 0, 0);
 
-    pixel_buffer = GX2RLockSurfaceEx(&tdata->texture.surface, 0, 0);
-    if (!pixel_buffer) {
-        //TODO real error handling
-        printf("SDL: Couldn't lock surface for texture!\n");
-        return -1;
-    }
-
-    // Calculate pointer to first pixel in rect
+    /* Calculate pointer to first pixel in rect */
     *pixels = (void *) ((Uint8 *) pixel_buffer +
                         rect->y * (tdata->texture.surface.pitch * BytesPerPixel) +
                         rect->x * BytesPerPixel);
     *pitch = (tdata->texture.surface.pitch * BytesPerPixel);
 
-    // Not sure we even need to bother keeping track of this
+    /* Not sure we even need to bother keeping track of this */
     texture->locked_rect = *rect;
+
     return 0;
 }
 
 void WIIU_SDL_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
-
     GX2RUnlockSurfaceEx(&tdata->texture.surface, 0, 0);
 }
 
 int WIIU_SDL_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                            const SDL_Rect * rect, const void *pixels, int pitch)
 {
-    Uint32 BytesPerPixel;
-    Uint8 *src, *dst;
-    int row, dst_pitch, rc;
-    size_t length;
+    Uint32 BytesPerPixel = SDL_BYTESPERPIXEL(texture->format);
+    size_t length = rect->w * BytesPerPixel;
+    Uint8 *src = (Uint8 *) pixels, *dst;
+    int row, dst_pitch;
 
-    BytesPerPixel = SDL_BYTESPERPIXEL(texture->format);
-    src = (Uint8 *) pixels;
-    length = rect->w * BytesPerPixel;
-
-/*  We write the rules, and we say all textures are streaming */
-    rc = WIIU_SDL_LockTexture(
-        renderer, texture, rect, (void**)&dst, &dst_pitch
-    );
-    if (rc < 0) {
-        return rc;
-    }
+    /* We write the rules, and we say all textures are streaming */
+    WIIU_SDL_LockTexture(renderer, texture, rect, (void**)&dst, &dst_pitch);
 
     for (row = 0; row < rect->h; ++row) {
         SDL_memcpy(dst, src, length);
@@ -209,10 +192,8 @@ int WIIU_SDL_SetTextureAlphaMod(SDL_Renderer * renderer, SDL_Texture * texture)
 
 void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    WIIU_TextureData *tdata;
-    if (texture == NULL || texture->driverdata == NULL) return;
+    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
 
-    tdata = (WIIU_TextureData *) texture->driverdata;
     GX2RDestroySurfaceEx(&tdata->cbuf.surface, 0);
     GX2RDestroySurfaceEx(&tdata->texture.surface, 0);
 

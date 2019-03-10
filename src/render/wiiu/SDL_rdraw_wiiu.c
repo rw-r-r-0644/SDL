@@ -62,7 +62,7 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
         GX2RInvalidateSurface(&tdata->texture.surface, 0, 0);
     }
 
-/*  Allocate attribute buffers */
+    /* Allocate attribute buffers */
     a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
         .flags =
             GX2R_RESOURCE_BIND_VERTEX_BUFFER |
@@ -78,13 +78,13 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
         .elemCount = 4, // 4 corners
     });
 
-/*  Compute vertex points */
+    /* Compute vertex points */
     x_min = renderer->viewport.x + dstrect->x;
     y_min = renderer->viewport.y + dstrect->y;
     x_max = renderer->viewport.x + dstrect->x + dstrect->w;
     y_max = renderer->viewport.y + dstrect->y + dstrect->h;
 
-/*  Save them */
+    /* Save them */
     a_position_vals = GX2RLockBufferEx(a_position, 0);
     a_position_vals[0] = (WIIUVec2){.x = x_min, .y = y_min};
     a_position_vals[1] = (WIIUVec2){.x = x_max, .y = y_min};
@@ -92,7 +92,7 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     a_position_vals[3] = (WIIUVec2){.x = x_min, .y = y_max};
     GX2RUnlockBufferEx(a_position, 0);
 
-/*  Compute texture coords */
+    /* Compute texture coords */
     a_texCoord_vals = GX2RLockBufferEx(a_texCoord, 0);
     a_texCoord_vals[0] = (WIIUVec2) {
         .x = srcrect->x,
@@ -168,7 +168,7 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
         GX2RInvalidateSurface(&tdata->texture.surface, 0, 0);
     }
 
-    /*  Allocate attribute buffers */
+    /* Allocate attribute buffers */
     a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
         .flags =
             GX2R_RESOURCE_BIND_VERTEX_BUFFER |
@@ -184,7 +184,7 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
         .elemCount = 4, // 4 corners
     });
 
-    /*  Save vertex points */
+    /* Save vertex points */
     a_position_vals = GX2RLockBufferEx(a_position, 0);
     for (int i = 0; i < 4; i++) {
         a_position_vals[i] = (WIIUVec2) {
@@ -194,7 +194,7 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     }
     GX2RUnlockBufferEx(a_position, 0);
 
-    /*  Compute texture coords */
+    /* Compute texture coords */
     a_texCoord_vals = GX2RLockBufferEx(a_texCoord, 0);
     a_texCoord_vals[0] = (WIIUVec2) {
         .x = srcrect->x,
@@ -244,12 +244,12 @@ int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points
         .a = (float)renderer->a / 255.0f,
     };
 
-    /*  Allocate attribute buffers */
+    /* Allocate attribute buffers */
     a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
         .flags =
             GX2R_RESOURCE_BIND_VERTEX_BUFFER |
             GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = sizeof(WIIUVec2), // float x/y for each point
+        .elemSize = sizeof(WIIUVec2), /* float x/y for each point */
         .elemCount = count,
     });
 
@@ -295,7 +295,7 @@ int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
         .flags =
             GX2R_RESOURCE_BIND_VERTEX_BUFFER |
             GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = sizeof(WIIUVec2), // float x/y for each point
+        .elemSize = sizeof(WIIUVec2), /* float x/y for each point */
         .elemCount = count,
     });
 
@@ -380,22 +380,6 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, i
     return 0;
 }
 
-/*void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
-{
-    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    SDL_Window *window = renderer->window;
-
-    GX2Flush();
-    GX2DrawDone();
-    GX2Invalidate(GX2_INVALIDATE_MODE_CPU_TEXTURE, data->cbuf.surface.image, data->cbuf.surface.imageSize);
-
-    if (window) {
-        SDL_UpdateWindowSurface(window);
-    }
-
-    WIIU_FreeRenderData(data);
-}*/
-
 int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
 {
     WIIU_RenderData* data = (WIIU_RenderData*) renderer->driverdata;
@@ -448,7 +432,7 @@ static void WIIU_SDL_SetGX2BlendMode(SDL_BlendMode mode)
             /* A = [srcA * 0] + [dstA * 1] */
             GX2_BLEND_MODE_ZERO, GX2_BLEND_MODE_ONE,
             GX2_BLEND_COMBINE_MODE_ADD);
-	}
+    }
 }
 
-#endif //SDL_VIDEO_RENDER_WIIU
+#endif /* SDL_VIDEO_RENDER_WIIU */
