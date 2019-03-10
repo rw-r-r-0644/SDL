@@ -30,6 +30,7 @@
 #include "SDL_render_wiiu.h"
 
 #include <gx2/registers.h>
+#include <gx2r/surface.h>
 
 #include <malloc.h>
 #include <stdio.h>
@@ -191,9 +192,8 @@ int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
 {
     SDL_Texture* target = WIIU_GetRenderTarget(renderer);
     WIIU_TextureData* tdata = (WIIU_TextureData*) target->driverdata;
-
-    Uint32 src_format;
-    void *src_pixels;
+    Uint8 *src_image;
+    int ret;
 
     /* NOTE: The rect is already adjusted according to the viewport by
      * SDL_RenderReadPixels.
@@ -204,14 +204,16 @@ int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
         return SDL_SetError("Tried to read outside of surface bounds");
     }
 
-    src_format = SDL_PIXELFORMAT_RGBA8888; // TODO once working: other formats/checks
-    src_pixels = (void*)((Uint8 *) tdata->cbuf.surface.image +
-                         rect->y * tdata->cbuf.surface.pitch +
-                         rect->x * 4);
+    src_image = GX2RLockSurfaceEx(&tdata->cbuf.surface, 0, GX2R_RESOURCE_LOCKED_READ_ONLY);
 
-    return SDL_ConvertPixels(rect->w, rect->h,
-                             src_format, src_pixels, tdata->cbuf.surface.pitch,
-                             format, pixels, pitch);
+    ret = SDL_ConvertPixels(rect->w, rect->h, target->format,
+                                src_image + rect->y * tdata->cbuf.surface.pitch + rect->x * 4,
+                                tdata->cbuf.surface.pitch,
+                                format, pixels, pitch);
+
+    GX2RUnlockSurfaceEx(&tdata->cbuf.surface, 0, GX2R_RESOURCE_LOCKED_READ_ONLY);
+
+    return ret;
 }
 
 
