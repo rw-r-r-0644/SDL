@@ -172,11 +172,7 @@ void WIIU_SDL_DestroyRenderer(SDL_Renderer * renderer)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
 
-    while (data->listfree) {
-        void *ptr = data->listfree;
-        data->listfree = data->listfree->next;
-        SDL_free(ptr);
-    }
+    WIIU_FreeRenderData(data);
 
     free(data->ctx);
 
