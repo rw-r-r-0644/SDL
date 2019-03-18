@@ -1,7 +1,7 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 2018-2018 Ash Logan <ash@heyquark.com>
-  Copyright (C) 2018-2018 Roberto Van Eeden <r.r.qwertyuiop.r.r@gmail.com>
+  Copyright (C) 2018-2019 Ash Logan <ash@heyquark.com>
+  Copyright (C) 2018-2019 Roberto Van Eeden <r.r.qwertyuiop.r.r@gmail.com>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,7 +19,6 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-
 #include "../../SDL_internal.h"
 
 #ifndef SDL_render_wiiu_h
@@ -27,60 +26,91 @@
 
 #include "../SDL_sysrender.h"
 #include "SDL_pixels.h"
+#include <gx2r/buffer.h>
 #include <gx2/context.h>
 #include <gx2/sampler.h>
+#include <gx2/texture.h>
+#include <gx2/surface.h>
+#include <gx2/event.h>
 
-typedef struct
+/* Driver internal data structures */
+typedef struct WIIUVec2 WIIUVec2;
+typedef struct WIIUVec3 WIIUVec3;
+typedef struct WIIUVec4 WIIUVec4;
+typedef struct WIIUPixFmt WIIUPixFmt;
+typedef struct WIIU_RenderAllocData WIIU_RenderAllocData;
+typedef struct WIIU_TextureDrawData WIIU_TextureDrawData;
+typedef struct WIIU_RenderData WIIU_RenderData;
+typedef struct WIIU_TextureData WIIU_TextureData;
+
+struct WIIUVec2
+{
+    union { float x, r; };
+    union { float y, g; };
+};
+
+struct WIIUVec3
+{
+    union { float x, r; };
+    union { float y, g; };
+    union { float z, b; };
+};
+
+struct WIIUVec4
+{
+    union { float x, r; };
+    union { float y, g; };
+    union { float z, b; };
+    union { float w, a; };
+};
+
+struct WIIUPixFmt
+{
+    GX2SurfaceFormat fmt;
+    uint32_t compMap;
+};
+
+struct WIIU_RenderAllocData
 {
     void *next;
-    int ptr[];
-} WIIU_RenderAllocData;
+    GX2RBuffer buffer;
+};
 
-//Driver internal data structures
-typedef struct
+struct WIIU_TextureDrawData
 {
-    GX2ColorBuffer cbuf;
+    void *next;
+    WIIU_TextureData *texdata;
+};
+
+struct WIIU_RenderData
+{
     GX2ContextState *ctx;
     WIIU_RenderAllocData *listfree;
-    float u_viewSize[4];
-} WIIU_RenderData;
+    WIIU_TextureDrawData *listdraw;
+    WIIUVec4 u_viewSize;
+    SDL_Texture windowTex;
+};
 
-typedef struct
+struct WIIU_TextureData
 {
     GX2Sampler sampler;
     GX2Texture texture;
-    float u_texSize[4];
-} WIIU_TextureData;
+    GX2ColorBuffer cbuf;
+    WIIUVec4 u_texSize;
+    WIIUVec4 u_mod;
+    int isRendering;
+};
 
-static inline void *WIIU_AllocRenderData(WIIU_RenderData *r, size_t size) {
-    WIIU_RenderAllocData *rdata = SDL_malloc(sizeof(WIIU_RenderAllocData) + size);
-    rdata->next = r->listfree;
-    r->listfree = rdata;
-    return (void *)rdata->ptr;
-}
-
-static inline void WIIU_FreeRenderData(WIIU_RenderData *r) {
-    while (r->listfree) {
-        void *ptr = r->listfree;
-        r->listfree = r->listfree->next;
-        SDL_free(ptr);
-    }
-}
-
-//SDL_render API implementation
+/* SDL_render API implementation */
 SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags);
 void WIIU_SDL_WindowEvent(SDL_Renderer * renderer,
                              const SDL_WindowEvent *event);
 int WIIU_SDL_GetOutputSize(SDL_Renderer * renderer, int *w, int *h);
 int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture);
-// SDL changes colour/alpha/blend values internally, this is just to notify us.
-// We don't care yet. TODO: could update GX2RBuffers less frequently with these?
-/*int WIIU_SDL_SetTextureColorMod(SDL_Renderer * renderer,
+int WIIU_SDL_SetTextureColorMod(SDL_Renderer * renderer,
                                 SDL_Texture * texture);
 int WIIU_SDL_SetTextureAlphaMod(SDL_Renderer * renderer,
                                 SDL_Texture * texture);
-int WIIU_SDL_SetTextureBlendMode(SDL_Renderer * renderer,
-                                 SDL_Texture * texture);*/
 int WIIU_SDL_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                        const SDL_Rect * rect, const void *pixels,
                        int pitch);
@@ -108,28 +138,87 @@ void WIIU_SDL_RenderPresent(SDL_Renderer * renderer);
 void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture);
 void WIIU_SDL_DestroyRenderer(SDL_Renderer * renderer);
 
-//Utility/helper functions
-static inline Uint32 TextureNextPow2(Uint32 w) {
-    Uint32 n = 2;
-    if(w == 0)
+/* Driver internal functions */
+void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window);
+
+/* Utility/helper functions */
+static inline GX2RBuffer * WIIU_AllocRenderData(WIIU_RenderData *r, GX2RBuffer buffer)
+{
+    WIIU_RenderAllocData *rdata = SDL_malloc(sizeof(WIIU_RenderAllocData));
+
+    rdata->buffer = buffer;
+    if (!GX2RCreateBuffer(&rdata->buffer)) {
+        SDL_free(rdata);
         return 0;
-    while(w > n)
-        n <<= 1;
-    return n;
+    }
+
+    rdata->next = r->listfree;
+    r->listfree = rdata;
+    return &rdata->buffer;
 }
 
-typedef struct WIIUPixFmt {
-    GX2SurfaceFormat fmt;
-    uint32_t compMap;
-} WIIUPixFmt;
+static inline void WIIU_FreeRenderData(WIIU_RenderData *r)
+{
+    while (r->listfree) {
+        WIIU_RenderAllocData *ptr = r->listfree;
+        r->listfree = r->listfree->next;
+        GX2RDestroyBufferEx(&ptr->buffer, 0);
+        SDL_free(ptr);
+    }
+}
 
-static inline WIIUPixFmt SDLFormatToWIIUFormat(Uint32 format) {
+static inline void WIIU_TextureStartRendering(WIIU_RenderData *r, WIIU_TextureData *t)
+{
+    WIIU_TextureDrawData *d = SDL_malloc(sizeof(WIIU_TextureDrawData));
+    t->isRendering = 1;
+    d->texdata = t;
+    d->next = r->listdraw;
+    r->listdraw = d;
+}
+
+static inline void WIIU_TextureDoneRendering(WIIU_RenderData *r)
+{
+    while (r->listdraw) {
+        WIIU_TextureDrawData *d = r->listdraw;
+        r->listdraw = r->listdraw->next;
+        d->texdata->isRendering = 0;
+        SDL_free(d);
+    }
+}
+
+/* If the texture is currently being rendered and we change the content
+   before the rendering is finished, the GPU will end up partially drawing
+   the new data, so we wait for the GPU to finish rendering before
+   updating the texture */
+static inline void WIIU_TextureCheckWaitRendering(WIIU_RenderData *r, WIIU_TextureData *t)
+{
+    if (t->isRendering)
+    {
+        GX2DrawDone();
+        WIIU_TextureDoneRendering(r);
+    }
+}
+
+static inline SDL_Texture * WIIU_GetRenderTarget(SDL_Renderer* renderer)
+{
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+
+    if (renderer->target) {
+        return renderer->target;
+    }
+
+    return &data->windowTex;
+}
+
+static inline WIIUPixFmt SDLFormatToWIIUFormat(Uint32 format)
+{
     WIIUPixFmt outFmt = { /* sane defaults? */
         .fmt = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8,
         .compMap = 0x00010203,
     };
+
     switch (format) {
-    /*  packed16 formats: 4 bits/channel */
+        /* packed16 formats: 4 bits/channel */
         case SDL_PIXELFORMAT_RGB444: /* aka XRGB4444 */
         case SDL_PIXELFORMAT_ARGB4444: {
             outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R4_G4_B4_A4;
@@ -152,7 +241,7 @@ static inline WIIUPixFmt SDLFormatToWIIUFormat(Uint32 format) {
             break;
         }
 
-    /*  packed16 formats: 5 bits/channel */
+        /* packed16 formats: 5 bits/channel */
         case SDL_PIXELFORMAT_RGB555: /* aka XRGB1555 */
         case SDL_PIXELFORMAT_ARGB1555: {
             outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R5_G5_B5_A1;
@@ -176,7 +265,7 @@ static inline WIIUPixFmt SDLFormatToWIIUFormat(Uint32 format) {
             break;
         }
 
-    /*  packed16 formats: 565 */
+        /* packed16 formats: 565 */
         case SDL_PIXELFORMAT_RGB565: {
             outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R5_G6_B5;
             outFmt.compMap = 0x00010203;
@@ -188,7 +277,7 @@ static inline WIIUPixFmt SDLFormatToWIIUFormat(Uint32 format) {
             break;
         }
 
-    /*  packed32 formats */
+        /* packed32 formats */
         case SDL_PIXELFORMAT_RGBA8888:
         case SDL_PIXELFORMAT_RGBX8888: {
             outFmt.fmt = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
@@ -218,7 +307,7 @@ static inline WIIUPixFmt SDLFormatToWIIUFormat(Uint32 format) {
             break;
         }
         default: {
-        /*  TODO return an error */
+            /* TODO return an error */
             printf("SDL: WiiU format not recognised (SDL: %08X)\n", format);
             break;
         }

@@ -35,4 +35,11 @@ typedef struct
     GX2Texture texture;
 } WIIU_WindowData;
 
+typedef struct
+{
+    SDL_bool tv_window_exists;
+    SDL_bool drc_window_exists;
+    SDL_bool mirrored_window_exists;
+} WIIU_VideoDeviceData;
+
 #endif //SDL_wiiuvideo_h
