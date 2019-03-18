@@ -143,8 +143,9 @@ void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
 
     WHBGfxFinishRender();
 
-    /* Free the list of render data */
+    /* Free the list of render and draw data */
     WIIU_FreeRenderData(data);
+    WIIU_TextureDoneRendering(data);
 
     /* Restore SDL context state */
     GX2SetContextState(data->ctx);

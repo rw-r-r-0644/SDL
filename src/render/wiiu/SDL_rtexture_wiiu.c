@@ -113,6 +113,7 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         .a = (float)texture->a / 255.0f,
     };
 
+    /* Setup texture driver data */
     texture->driverdata = tdata;
 
     return 0;
@@ -124,9 +125,15 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 int WIIU_SDL_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                          const SDL_Rect * rect, void **pixels, int *pitch)
 {
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
     Uint32 BytesPerPixel = SDL_BYTESPERPIXEL(texture->format);
-    void* pixel_buffer = GX2RLockSurfaceEx(&tdata->texture.surface, 0, 0);
+    void* pixel_buffer;
+
+    /* Wait for the texture rendering to finish */
+    WIIU_TextureCheckWaitRendering(data, tdata);
+
+    pixel_buffer = GX2RLockSurfaceEx(&tdata->texture.surface, 0, 0);
 
     /* Calculate pointer to first pixel in rect */
     *pixels = (void *) ((Uint8 *) pixel_buffer +
@@ -192,7 +199,11 @@ int WIIU_SDL_SetTextureAlphaMod(SDL_Renderer * renderer, SDL_Texture * texture)
 
 void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+
+    /* Wait for the texture rendering to finish */
+    WIIU_TextureCheckWaitRendering(data, tdata);
 
     GX2RDestroySurfaceEx(&tdata->cbuf.surface, 0);
     GX2RDestroySurfaceEx(&tdata->texture.surface, 0);
