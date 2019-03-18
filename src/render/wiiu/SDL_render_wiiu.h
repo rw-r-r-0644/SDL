@@ -192,10 +192,10 @@ static inline void WIIU_TextureDoneRendering(WIIU_RenderData *r)
    updating the texture */
 static inline void WIIU_TextureCheckWaitRendering(WIIU_RenderData *r, WIIU_TextureData *t)
 {
-    if (t->isRendering)
-    {
+    if (t->isRendering) {
         GX2DrawDone();
         WIIU_TextureDoneRendering(r);
+        WIIU_FreeRenderData(r);
     }
 }
 
