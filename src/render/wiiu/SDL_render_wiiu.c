@@ -124,6 +124,7 @@ void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window)
     data->windowTex = (SDL_Texture) {
         .format = SDL_PIXELFORMAT_RGBA8888,
         .r = 255, .g = 255, .b = 255, .a = 255,
+        .driverdata = WIIU_TEXTURE_MEM1_MAGIC,
     };
 
     SDL_GetWindowSize(window, &data->windowTex.w, &data->windowTex.h);

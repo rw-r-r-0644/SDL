@@ -38,8 +38,9 @@
 
 int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    WIIUPixFmt gx2_fmt;
     BOOL res;
+    WIIUPixFmt gx2_fmt;
+    GX2RResourceFlags surface_flags;
     WIIU_TextureData *tdata = (WIIU_TextureData *) SDL_calloc(1, sizeof(*tdata));
     if (!tdata) {
         return SDL_OutOfMemory();
@@ -74,12 +75,19 @@ int WIIU_SDL_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     tdata->cbuf.viewNumSlices = 1;
     GX2InitColorBufferRegs(&tdata->cbuf);
 
+    /* Texture's surface flags */
+    surface_flags = GX2R_RESOURCE_BIND_TEXTURE | GX2R_RESOURCE_BIND_COLOR_BUFFER |
+                    GX2R_RESOURCE_USAGE_CPU_WRITE | GX2R_RESOURCE_USAGE_CPU_READ |
+                    GX2R_RESOURCE_USAGE_GPU_WRITE | GX2R_RESOURCE_USAGE_GPU_READ;
+
+    /* Allocate normal textures from MEM2 */
+    if (texture->driverdata != WIIU_TEXTURE_MEM1_MAGIC)
+        surface_flags |= GX2R_RESOURCE_USAGE_FORCE_MEM2;
+
     /* Allocate the texture's surface */
     res = GX2RCreateSurface(
         &tdata->texture.surface,
-        GX2R_RESOURCE_BIND_TEXTURE | GX2R_RESOURCE_BIND_COLOR_BUFFER |
-        GX2R_RESOURCE_USAGE_CPU_WRITE | GX2R_RESOURCE_USAGE_CPU_READ |
-        GX2R_RESOURCE_USAGE_GPU_WRITE | GX2R_RESOURCE_USAGE_GPU_READ
+        surface_flags
     );
     if (!res) {
         SDL_free(tdata);
