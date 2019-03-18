@@ -28,6 +28,7 @@
 #include "../SDL_sysrender.h"
 #include "SDL_render_wiiu.h"
 
+#include <gx2/event.h>
 #include <gx2/registers.h>
 #include <gx2r/surface.h>
 
@@ -164,7 +165,10 @@ void WIIU_SDL_DestroyRenderer(SDL_Renderer * renderer)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
 
+    GX2DrawDone();
+
     WIIU_FreeRenderData(data);
+    WIIU_TextureDoneRendering(data);
 
     free(data->ctx);
 
