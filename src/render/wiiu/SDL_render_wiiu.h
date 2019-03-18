@@ -101,6 +101,9 @@ struct WIIU_TextureData
     int isRendering;
 };
 
+/* Ask texture driver to allocate texture's memory from MEM1 */
+#define WIIU_TEXTURE_MEM1_MAGIC (void *)0xCAFE0001
+
 /* SDL_render API implementation */
 SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags);
 void WIIU_SDL_WindowEvent(SDL_Renderer * renderer,
