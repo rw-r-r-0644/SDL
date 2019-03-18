@@ -139,6 +139,9 @@ int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
     WIIU_TextureData *tdata = (WIIU_TextureData *)((texture) ? texture->driverdata
                                                              : data->windowTex.driverdata);
 
+    /* Wait for the texture rendering to finish */
+    WIIU_TextureCheckWaitRendering(data, tdata);
+
     /* Update u_viewSize */
     data->u_viewSize = (WIIUVec4) {
         .x = (float)tdata->cbuf.surface.width,

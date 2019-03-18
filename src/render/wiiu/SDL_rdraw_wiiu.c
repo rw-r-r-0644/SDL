@@ -62,6 +62,9 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
         GX2RInvalidateSurface(&tdata->texture.surface, 0, 0);
     }
 
+    /* Update texture rendering state */
+    WIIU_TextureStartRendering(data, tdata);
+
     /* Allocate attribute buffers */
     a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
         .flags =
@@ -167,6 +170,9 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     if (texture->access & SDL_TEXTUREACCESS_TARGET) {
         GX2RInvalidateSurface(&tdata->texture.surface, 0, 0);
     }
+
+    /* Update texture rendering state */
+    WIIU_TextureStartRendering(data, tdata);
 
     /* Allocate attribute buffers */
     a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
