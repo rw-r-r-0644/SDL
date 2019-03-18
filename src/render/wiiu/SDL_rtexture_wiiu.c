@@ -199,8 +199,15 @@ int WIIU_SDL_SetTextureAlphaMod(SDL_Renderer * renderer, SDL_Texture * texture)
 
 void WIIU_SDL_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+    WIIU_RenderData *data;
+    WIIU_TextureData *tdata;
+
+    if (texture == NULL || texture->driverdata == NULL) {
+        return;
+    }
+
+    data = (WIIU_RenderData *) renderer->driverdata;
+    tdata = (WIIU_TextureData *) texture->driverdata;
 
     /* Wait for the texture rendering to finish */
     WIIU_TextureCheckWaitRendering(data, tdata);
