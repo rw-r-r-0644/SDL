@@ -26,6 +26,7 @@
 #include "../../video/wiiu/SDL_wiiuvideo.h"
 #include "../../video/wiiu/wiiu_shaders.h"
 #include "../SDL_sysrender.h"
+#include "SDL_hints.h"
 #include "SDL_render_wiiu.h"
 
 #include <gx2/event.h>
@@ -114,10 +115,26 @@ SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
 void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    const char *s_hint;
+    SDL_ScaleMode s_mode;
 
     if (data->windowTex.driverdata) {
         WIIU_SDL_DestroyTexture(renderer, &data->windowTex);
         data->windowTex = (SDL_Texture) {0};
+    }
+
+    /* Setup scaling mode; this is normally handled by
+       SDL_CreateTexture/SDL_GetScaleMode, but those can't
+       be called before fully initializinig the renderer */
+    s_hint = SDL_GetHint(SDL_HINT_RENDER_SCALE_QUALITY);
+    if (!s_hint || SDL_strcasecmp(s_hint, "nearest") == 0) {
+        s_mode = SDL_ScaleModeNearest;
+    } else if (SDL_strcasecmp(s_hint, "linear") == 0) {
+        s_mode = SDL_ScaleModeLinear;
+    } else if (SDL_strcasecmp(s_hint, "best") == 0) {
+        s_mode = SDL_ScaleModeBest;
+    } else {
+        s_mode = (SDL_ScaleMode)SDL_atoi(s_hint);
     }
 
     /* Allocate a buffer for the window */
@@ -125,6 +142,7 @@ void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window)
         .format = SDL_PIXELFORMAT_RGBA8888,
         .r = 255, .g = 255, .b = 255, .a = 255,
         .driverdata = WIIU_TEXTURE_MEM1_MAGIC,
+        .scaleMode = s_mode,
     };
 
     SDL_GetWindowSize(window, &data->windowTex.w, &data->windowTex.h);
