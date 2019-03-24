@@ -237,6 +237,10 @@ if(WUT)
   # Use wut cflags and remove debug symbols
   set(CMAKE_C_FLAGS "${WUT_C_FLAGS} ${CMAKE_C_FLAGS}")
   string(REPLACE "-g" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+
+  #Link against needed libraries
+  set(SDL_LIBS "${SDL_LIBS} -lcoreinit -lgx2 -lwhb -lproc_ui -lsysapp -lgfd")
+  set(SDL_LIBS "${SDL_LIBS} -lvpad -lpadscore -lnsysnet -lsndcore2")
 endif()
 
 # Emscripten toolchain has a nonempty default value for this, and the checks
