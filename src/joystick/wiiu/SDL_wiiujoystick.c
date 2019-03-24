@@ -1,6 +1,7 @@
 /*
   Simple DirectMedia Layer
   Copyright (C) 2018 Roberto Van Eeden <r.r.qwertyuiop.r.r@gmail.com>
+  Copyright (C) 2019 Ash Logan <ash@heyquark.com>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,22 +32,59 @@
 #include "../SDL_joystick_c.h"
 #include "../../events/SDL_touch_c.h"
 
+#include "SDL_log.h"
 #include "SDL_assert.h"
 #include "SDL_events.h"
 
-#define JOYSTICK_COUNT 1
+#include "SDL_wiiujoystick.h"
 
-static VPADButtons vpad_button_map[] =
-{
-	VPAD_BUTTON_A, VPAD_BUTTON_B, VPAD_BUTTON_X, VPAD_BUTTON_Y,
-	VPAD_BUTTON_STICK_L, VPAD_BUTTON_STICK_R,
-	VPAD_BUTTON_L, VPAD_BUTTON_R,
-	VPAD_BUTTON_ZL, VPAD_BUTTON_ZR,
-	VPAD_BUTTON_PLUS, VPAD_BUTTON_MINUS,
-	VPAD_BUTTON_LEFT, VPAD_BUTTON_UP, VPAD_BUTTON_RIGHT, VPAD_BUTTON_DOWN,
-	VPAD_STICK_L_EMULATION_LEFT, VPAD_STICK_L_EMULATION_UP, VPAD_STICK_L_EMULATION_RIGHT, VPAD_STICK_L_EMULATION_DOWN,
-	VPAD_STICK_R_EMULATION_LEFT, VPAD_STICK_R_EMULATION_UP, VPAD_STICK_R_EMULATION_RIGHT, VPAD_STICK_R_EMULATION_DOWN
-};
+#define WIIU_DEVICE_INVALID (-1)
+#define WIIU_DEVICE_GAMEPAD (0)
+#define WIIU_DEVICE_WPAD(x) (x + 1)
+
+#define MAX_CONTROLLERS WIIU_DEVICE_WPAD(4)
+//index with device_index, get WIIU_DEVICE*
+static int deviceMap[MAX_CONTROLLERS];
+//index with device_index, get SDL_JoystickID
+static SDL_JoystickID instanceMap[MAX_CONTROLLERS];
+
+static int WIIU_GetDeviceForIndex(int device_index) {
+	return deviceMap[device_index];
+}
+static int WIIU_GetIndexForDevice(int wiiu_device) {
+	for (int i = 0; i < MAX_CONTROLLERS; i++) {
+		if (deviceMap[i] == wiiu_device) return i;
+	}
+	return -1;
+}
+
+static int WIIU_GetNextDeviceIndex() {
+	return WIIU_GetIndexForDevice(WIIU_DEVICE_INVALID);
+}
+
+static int WIIU_GetInstForIndex(int device_index) {
+	if (device_index == -1) return -1;
+	return instanceMap[device_index];
+}
+static int WIIU_GetInstForDevice(int wiiu_device) {
+	int device_index = WIIU_GetIndexForDevice(wiiu_device);
+	return WIIU_GetInstForIndex(device_index);
+}
+
+static void WIIU_RemoveDevice(int wiiu_device) {
+	int device_index = WIIU_GetIndexForDevice(wiiu_device);
+	if (device_index == -1) return;
+	/* Move all the other controllers back, so all device_indexes are valid */
+	for (int i = device_index; i < MAX_CONTROLLERS; i++) {
+		if (i + 1 < MAX_CONTROLLERS) {
+			deviceMap[i] = deviceMap[i + 1];
+			instanceMap[i] = instanceMap[i + 1];
+		} else {
+			deviceMap[i] = -1;
+			instanceMap[i] = -1;
+		}
+	}
+}
 
 /* Function to scan the system for joysticks.
  * Joystick 0 should be the system default joystick.
@@ -54,25 +92,72 @@ static VPADButtons vpad_button_map[] =
  */
 static int WIIU_JoystickInit(void)
 {
-	return JOYSTICK_COUNT;
+	for (int i = 0; i < MAX_CONTROLLERS; i++) {
+		deviceMap[i] = WIIU_DEVICE_INVALID;
+		instanceMap[i] = -1;
+	}
+	WIIU_JoystickDetect();
+	return 0;
 }
 
 /* Function to return the number of joystick devices plugged in right now */
 static int WIIU_JoystickGetCount(void)
 {
-	return JOYSTICK_COUNT;
+	return WIIU_GetNextDeviceIndex();
 }
 
 /* Function to cause any queued joystick insertions to be processed */
 static void WIIU_JoystickDetect(void)
 {
+/*	Make sure there are no dangling instances or device indexes
+ 	These checks *should* be unneccesary, remove once battle-tested */
+	for (int i = 0; i < MAX_CONTROLLERS; i++) {
+		if (deviceMap[i] == WIIU_DEVICE_INVALID && instanceMap[i] != -1) {
+
+			SDL_LogWarn(SDL_LOG_CATEGORY_INPUT,
+				"WiiU device_index %d dangling instance %d!\n",
+				i, instanceMap[i]
+			);
+			/* Make sure that joystick actually got removed */
+			SDL_PrivateJoystickRemoved(instanceMap[i]);
+			instanceMap[i] = -1;
+		}
+		if (deviceMap[i] != WIIU_DEVICE_INVALID && instanceMap[i] == -1) {
+			SDL_LogWarn(SDL_LOG_CATEGORY_INPUT,
+				"WiiU device_index %d assigned to %d, but has no instance!\n",
+				i, deviceMap[i]
+			);
+			instanceMap[i] = -1;
+		}
+	}
+/*	Check if we are missing the WiiU Gamepad and try to connect it
+	if the gamepad is disconnected that's handled in SDL_UpdateJoystick */
+	if (WIIU_GetIndexForDevice(WIIU_DEVICE_GAMEPAD) == -1) {
+	/*	Try and detect a gamepad */
+		VPADStatus status;
+		VPADReadError err;
+		VPADRead(VPAD_CHAN_0, &status, 1, &err);
+		if (err == VPAD_READ_SUCCESS || err == VPAD_READ_NO_SAMPLES) {
+		/*	We have a gamepad! Assign a device index and instance ID. */
+			int device_index = WIIU_GetNextDeviceIndex();
+			if (device_index != -1) {
+			/*	Save its device index */
+				deviceMap[device_index] = WIIU_DEVICE_GAMEPAD;
+				instanceMap[device_index] = SDL_GetNextJoystickInstanceID();
+				SDL_PrivateJoystickAdded(instanceMap[device_index]);
+				SDL_LogInfo(SDL_LOG_CATEGORY_INPUT,
+					"WiiU: Detected Gamepad, assigned device %d/instance %d\n",
+					device_index, instanceMap[device_index]);
+			}
+		}
+	}
 }
 
 /* Function to get the device-dependent name of a joystick */
 static const char *WIIU_JoystickGetDeviceName(int device_index)
 {
 	/* Gamepad */
-	if (device_index == 0)
+	if (WIIU_GetDeviceForIndex(device_index) == WIIU_DEVICE_GAMEPAD)
 		return "WiiU Gamepad";
 	return "Unknown";
 }
@@ -97,7 +182,7 @@ static SDL_JoystickGUID WIIU_JoystickGetDeviceGUID(int device_index)
 /* Function to get the current instance id of the joystick located at device_index */
 static SDL_JoystickID WIIU_JoystickGetDeviceInstanceID(int device_index)
 {
-	return device_index;
+	return WIIU_GetInstForIndex(device_index);
 }
 
 /* Function to open a joystick for use.
@@ -115,7 +200,7 @@ static int WIIU_JoystickOpen(SDL_Joystick *joystick, int device_index)
 		joystick->nhats = 0;
 	}
 
-	joystick->instance_id = device_index;
+	joystick->instance_id = WIIU_GetInstForIndex(device_index);
 
 	return 0;
 }
@@ -135,7 +220,7 @@ static int WIIU_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rum
 static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 {
 	/* Gamepad */
-	if (joystick->instance_id == 0) {
+	if (joystick->instance_id == WIIU_GetInstForDevice(WIIU_DEVICE_GAMEPAD)) {
 		int16_t x1, y1, x2, y2;
 
 		static uint16_t last_touch_x = 0;
@@ -151,8 +236,14 @@ static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 		VPADReadError error;
 		VPADTouchData tpdata;
 		VPADRead(VPAD_CHAN_0, &vpad, 1, &error);
-		if (error != VPAD_READ_SUCCESS)
+		if (error == VPAD_READ_INVALID_CONTROLLER) {
+			/* Gamepad disconnected! */
+			SDL_PrivateJoystickRemoved(joystick->instance_id);
+			/* Unlink Gamepad, device_index, instance_id */
+			WIIU_RemoveDevice(WIIU_DEVICE_GAMEPAD);
+		} else if (error != VPAD_READ_SUCCESS) {
 			return;
+		}
 
 		/* touchscreen */
 		VPADGetTPCalibratedPoint(VPAD_CHAN_0, &tpdata, &vpad.tpNormal);
