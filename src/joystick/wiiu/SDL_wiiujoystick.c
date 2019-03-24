@@ -25,6 +25,8 @@
 #if SDL_JOYSTICK_WIIU
 
 #include <vpad/input.h>
+#include <padscore/wpad.h>
+#include <padscore/kpad.h>
 #include <coreinit/debug.h>
 
 #include "SDL_joystick.h"
@@ -38,15 +40,11 @@
 
 #include "SDL_wiiujoystick.h"
 
-#define WIIU_DEVICE_INVALID (-1)
-#define WIIU_DEVICE_GAMEPAD (0)
-#define WIIU_DEVICE_WPAD(x) (x + 1)
-
-#define MAX_CONTROLLERS WIIU_DEVICE_WPAD(4)
 //index with device_index, get WIIU_DEVICE*
 static int deviceMap[MAX_CONTROLLERS];
 //index with device_index, get SDL_JoystickID
 static SDL_JoystickID instanceMap[MAX_CONTROLLERS];
+static WPADExtensionType lastKnownExts[WIIU_NUM_WPADS];
 
 static int WIIU_GetDeviceForIndex(int device_index) {
 	return deviceMap[device_index];
@@ -62,13 +60,19 @@ static int WIIU_GetNextDeviceIndex() {
 	return WIIU_GetIndexForDevice(WIIU_DEVICE_INVALID);
 }
 
-static int WIIU_GetInstForIndex(int device_index) {
+static SDL_JoystickID WIIU_GetInstForIndex(int device_index) {
 	if (device_index == -1) return -1;
 	return instanceMap[device_index];
 }
-static int WIIU_GetInstForDevice(int wiiu_device) {
+static SDL_JoystickID WIIU_GetInstForDevice(int wiiu_device) {
 	int device_index = WIIU_GetIndexForDevice(wiiu_device);
 	return WIIU_GetInstForIndex(device_index);
+}
+static int WIIU_GetDeviceForInst(SDL_JoystickID instance) {
+	for (int i = 0; i < MAX_CONTROLLERS; i++) {
+		if (instanceMap[i] == instance) return deviceMap[i];
+	}
+	return WIIU_DEVICE_INVALID;
 }
 
 static void WIIU_RemoveDevice(int wiiu_device) {
@@ -92,6 +96,10 @@ static void WIIU_RemoveDevice(int wiiu_device) {
  */
 static int WIIU_JoystickInit(void)
 {
+	VPADInit();
+	KPADInit();
+	WPADEnableURCC(1);
+
 	for (int i = 0; i < MAX_CONTROLLERS; i++) {
 		deviceMap[i] = WIIU_DEVICE_INVALID;
 		instanceMap[i] = -1;
@@ -151,14 +159,66 @@ static void WIIU_JoystickDetect(void)
 			}
 		}
 	}
+	/* Check for WPAD/KPAD controllers */
+	for (int i = 0; i < WIIU_NUM_WPADS; i++) {
+		WPADExtensionType ext;
+		int wiiu_device = WIIU_DEVICE_WPAD(i);
+		int ret = WPADProbe(WIIU_WPAD_CHAN(wiiu_device), &ext);
+		if (ret == 0) { //controller connected
+			/* Is this already connected? */
+			if (WIIU_GetIndexForDevice(wiiu_device) == -1) {
+				/* No! Let's add it. */
+				int device_index = WIIU_GetNextDeviceIndex();
+				if (device_index != -1) {
+				/*	Save its device index */
+					deviceMap[device_index] = WIIU_DEVICE_WPAD(i);
+					instanceMap[device_index] = SDL_GetNextJoystickInstanceID();
+				/*	Save its extension controller */
+					lastKnownExts[WIIU_WPAD_CHAN(wiiu_device)] = ext;
+					SDL_PrivateJoystickAdded(instanceMap[device_index]);
+					SDL_LogInfo(SDL_LOG_CATEGORY_INPUT,
+						"WiiU: Detected WPAD, assigned device %d/instance %d\n",
+						device_index, instanceMap[device_index]);
+				}
+			} else if (ext != lastKnownExts[WIIU_WPAD_CHAN(wiiu_device)]) {
+				/* If this controller has changed extensions, we should
+				disconnect and reconnect it. */
+				SDL_JoystickID instance = WIIU_GetInstForDevice(wiiu_device);
+				/* Yes! We should disconnect it. */
+				SDL_PrivateJoystickRemoved(instance);
+				/* Unlink device_index, instance_id */
+				WIIU_RemoveDevice(wiiu_device);
+			}
+		} else if (ret == -1) { //no controller
+			/* Is this controller connected? */
+			if (WIIU_GetIndexForDevice(wiiu_device) != -1) {
+				SDL_JoystickID instance = WIIU_GetInstForDevice(wiiu_device);
+				/* Yes! We should disconnect it. */
+				SDL_PrivateJoystickRemoved(instance);
+				/* Unlink device_index, instance_id */
+				WIIU_RemoveDevice(wiiu_device);
+			}
+		} // otherwise do nothing (-2: pairing)
+	}
 }
 
 /* Function to get the device-dependent name of a joystick */
 static const char *WIIU_JoystickGetDeviceName(int device_index)
 {
+	int wiiu_device = WIIU_GetDeviceForIndex(device_index);
 	/* Gamepad */
-	if (WIIU_GetDeviceForIndex(device_index) == WIIU_DEVICE_GAMEPAD)
+	if (wiiu_device == WIIU_DEVICE_GAMEPAD) {
 		return "WiiU Gamepad";
+	} else if (wiiu_device == WIIU_DEVICE_WPAD(0)) {
+		RETURN_WPAD_NAME(1, lastKnownExts[0]);
+	} else if (wiiu_device == WIIU_DEVICE_WPAD(1)) {
+		RETURN_WPAD_NAME(2, lastKnownExts[1]);
+	} else if (wiiu_device == WIIU_DEVICE_WPAD(2)) {
+		RETURN_WPAD_NAME(3, lastKnownExts[2]);
+	} else if (wiiu_device == WIIU_DEVICE_WPAD(3)) {
+		RETURN_WPAD_NAME(4, lastKnownExts[3]);
+	}
+
 	return "Unknown";
 }
 
@@ -192,16 +252,64 @@ static SDL_JoystickID WIIU_JoystickGetDeviceInstanceID(int device_index)
  */
 static int WIIU_JoystickOpen(SDL_Joystick *joystick, int device_index)
 {
-	/* Gamepad */
-	if (WIIU_GetDeviceForIndex(device_index) == WIIU_DEVICE_GAMEPAD) {
-		SDL_AddTouch(0, "WiiU Gamepad Touchscreen");
-		joystick->nbuttons = sizeof(vpad_button_map) / sizeof(VPADButtons);
-		joystick->naxes = 4;
-		joystick->nhats = 0;
+	int wiiu_device = WIIU_GetDeviceForIndex(device_index);
+	switch (wiiu_device) {
+		case WIIU_DEVICE_GAMEPAD: {
+			SDL_AddTouch(0, "WiiU Gamepad Touchscreen");
+			joystick->nbuttons = SIZEOF_ARR(vpad_button_map);
+			joystick->naxes = 4;
+			joystick->nhats = 0;
+
+			break;
+		}
+		case WIIU_DEVICE_WPAD(0):
+		case WIIU_DEVICE_WPAD(1):
+		case WIIU_DEVICE_WPAD(2):
+		case WIIU_DEVICE_WPAD(3): {
+			WPADExtensionType ext;
+			int ret = WPADProbe(WIIU_WPAD_CHAN(wiiu_device), &ext);
+			if (ret != 0) {
+				SDL_LogWarn(SDL_LOG_CATEGORY_INPUT,
+					"WiiU_JoystickOpen: WPAD device %d failed probe!",
+					WIIU_WPAD_CHAN(wiiu_device));
+				return -1;
+			}
+
+			switch (ext) {
+				case WPAD_EXT_CORE:
+				case WPAD_EXT_MPLUS:
+				default: {
+					joystick->nbuttons = SIZEOF_ARR(wiimote_button_map);
+					joystick->naxes = 0;
+					joystick->nhats = 0;
+					break;
+				}
+				case WPAD_EXT_NUNCHUK:
+				case WPAD_EXT_MPLUS_NUNCHUK: {
+					joystick->nbuttons = SIZEOF_ARR(wiimote_button_map);
+					joystick->naxes = 2;
+					joystick->nhats = 0;
+					break;
+				}
+				case WPAD_EXT_CLASSIC:
+				case WPAD_EXT_MPLUS_CLASSIC: {
+					joystick->nbuttons = SIZEOF_ARR(classic_button_map);
+					joystick->naxes = 4;
+					joystick->nhats = 0;
+					break;
+				}
+				case WPAD_EXT_PRO_CONTROLLER: {
+					joystick->nbuttons = SIZEOF_ARR(pro_button_map);
+					joystick->naxes = 4;
+					joystick->nhats = 0;
+					break;
+				}
+			}
+			break;
+		}
 	}
 
 	joystick->instance_id = WIIU_GetInstForIndex(device_index);
-
 	return 0;
 }
 
@@ -219,10 +327,9 @@ static int WIIU_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rum
  */
 static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 {
+	int16_t x1, y1, x2, y2;
 	/* Gamepad */
 	if (joystick->instance_id == WIIU_GetInstForDevice(WIIU_DEVICE_GAMEPAD)) {
-		int16_t x1, y1, x2, y2;
-
 		static uint16_t last_touch_x = 0;
 		static uint16_t last_touch_y = 0;
 		static uint16_t last_touched = 0;
@@ -300,6 +407,89 @@ static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 		for(int i = 0; i < joystick->nbuttons; i++)
 			if (vpad.release & vpad_button_map[i])
 				SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_RELEASED);
+	} else if (
+		joystick->instance_id == WIIU_GetInstForDevice(WIIU_DEVICE_WPAD(0)) ||
+		joystick->instance_id == WIIU_GetInstForDevice(WIIU_DEVICE_WPAD(1)) ||
+		joystick->instance_id == WIIU_GetInstForDevice(WIIU_DEVICE_WPAD(2)) ||
+		joystick->instance_id == WIIU_GetInstForDevice(WIIU_DEVICE_WPAD(3))) {
+		int wiiu_device = WIIU_GetDeviceForInst(joystick->instance_id);
+		WPADExtensionType ext;
+		KPADStatus kpad;
+		int32_t err;
+
+		if (WPADProbe(WIIU_WPAD_CHAN(wiiu_device), &ext) != 0) {
+			/* Do nothing, we'll catch it in Detect() */
+			return;
+		}
+
+		KPADReadEx(WIIU_WPAD_CHAN(wiiu_device), &kpad, 1, &err);
+		if (err != KPAD_ERROR_OK) return;
+
+		switch (ext) {
+		case WPAD_EXT_CORE:
+		case WPAD_EXT_MPLUS:
+		default: {
+			for(int i = 0; i < joystick->nbuttons; i++)
+				if (kpad.trigger & wiimote_button_map[i])
+					SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_PRESSED);
+			for(int i = 0; i < joystick->nbuttons; i++)
+				if (kpad.release & wiimote_button_map[i])
+					SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_RELEASED);
+			break;
+		}
+		case WPAD_EXT_NUNCHUK:
+		case WPAD_EXT_MPLUS_NUNCHUK: {
+			for(int i = 0; i < joystick->nbuttons; i++)
+				if (kpad.trigger & wiimote_button_map[i])
+					SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_PRESSED);
+			for(int i = 0; i < joystick->nbuttons; i++)
+				if (kpad.release & wiimote_button_map[i])
+					SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_RELEASED);
+
+			x1 = (int16_t) ((kpad.nunchuck.stick.x) * 0x7ff0);
+			y1 = (int16_t) -((kpad.nunchuck.stick.y) * 0x7ff0);
+			SDL_PrivateJoystickAxis(joystick, 0, x1);
+			SDL_PrivateJoystickAxis(joystick, 1, y1);
+			break;
+		}
+		case WPAD_EXT_CLASSIC:
+		case WPAD_EXT_MPLUS_CLASSIC: {
+			for(int i = 0; i < joystick->nbuttons; i++)
+				if (kpad.classic.trigger & classic_button_map[i])
+					SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_PRESSED);
+			for(int i = 0; i < joystick->nbuttons; i++)
+				if (kpad.classic.release & classic_button_map[i])
+					SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_RELEASED);
+
+			x1 = (int16_t) ((kpad.classic.leftStick.x) * 0x7ff0);
+			y1 = (int16_t) -((kpad.classic.leftStick.y) * 0x7ff0);
+			x2 = (int16_t) ((kpad.classic.rightStick.x) * 0x7ff0);
+			y2 = (int16_t) -((kpad.classic.rightStick.y) * 0x7ff0);
+			SDL_PrivateJoystickAxis(joystick, 0, x1);
+			SDL_PrivateJoystickAxis(joystick, 1, y1);
+			SDL_PrivateJoystickAxis(joystick, 2, x2);
+			SDL_PrivateJoystickAxis(joystick, 3, y2);
+			break;
+		}
+		case WPAD_EXT_PRO_CONTROLLER: {
+			for(int i = 0; i < joystick->nbuttons; i++)
+				if (kpad.pro.trigger & pro_button_map[i])
+					SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_PRESSED);
+			for(int i = 0; i < joystick->nbuttons; i++)
+				if (kpad.pro.release & pro_button_map[i])
+					SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_RELEASED);
+
+			x1 = (int16_t) ((kpad.pro.leftStick.x) * 0x7ff0);
+			y1 = (int16_t) -((kpad.pro.leftStick.y) * 0x7ff0);
+			x2 = (int16_t) ((kpad.pro.rightStick.x) * 0x7ff0);
+			y2 = (int16_t) -((kpad.pro.rightStick.y) * 0x7ff0);
+			SDL_PrivateJoystickAxis(joystick, 0, x1);
+			SDL_PrivateJoystickAxis(joystick, 1, y1);
+			SDL_PrivateJoystickAxis(joystick, 2, x2);
+			SDL_PrivateJoystickAxis(joystick, 3, y2);
+			break;
+		}
+		}
 	}
 }
 
