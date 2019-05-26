@@ -20,11 +20,10 @@ Clone and enter the wiiu sdl repo:
     $ cd SDL
 Prepare for the build:
 
-    $ mkdir build
-    $ cd build
+    $ mkdir build && cd build
 Build:
 
-    $ cmake ../ -DCMAKE_TOOLCHAIN_FILE=$WUT_ROOT/share/wut.toolchain.cmake -DCMAKE_INSTALL_PREFIX=$DEVKITPRO/portlibs/wiiu
+    $ cmake ../ -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/wut/share/wut.toolchain.cmake -DCMAKE_INSTALL_PREFIX=$DEVKITPRO/portlibs/wiiu
     $ make
 Install (might need to run as sudo depending on `$DEVKITPRO/portlibs/wiiu`permissions):
 
