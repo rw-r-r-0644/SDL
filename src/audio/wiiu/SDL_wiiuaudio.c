@@ -66,15 +66,92 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
     AXVoiceVeData vol = {
         .volume = 0x8000,
     };
-    AXVoiceDeviceMixData drcmix = {
-        .bus = {
-            { .volume = 0x8000 }, //bus 0
-            { .volume = 0x0000 }, //bus 1
-            { .volume = 0x0000 }, //bus 2
-            { .volume = 0x0000 }, //bus 3
+    //TODO: AXGetDeviceChannelCount. For now we'll use Decaf's values and
+    //configure for stereo (muted surrounds).
+    AXVoiceDeviceMixData drcmix[4] = {
+        [0] = { //gamepad left channel
+            .bus = {
+                { .volume = 0x8000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
+        },
+        [1] = { //gamepad right channel
+            .bus = {
+                { .volume = 0x8000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
+        },
+        [2] = { //gamepad surround #1 (virtual)
+            .bus = {
+                { .volume = 0x0000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
+        },
+        [3] = { //gamepad surround #2 (virtual)
+            .bus = {
+                { .volume = 0x0000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
         },
     };
-    AXVoiceDeviceMixData tvmix = drcmix;
+    AXVoiceDeviceMixData tvmix[6] = {
+        [0] = { //tv left channel
+            .bus = {
+                { .volume = 0x8000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
+        },
+        [1] = { //tv right channel
+            .bus = {
+                { .volume = 0x8000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
+        },
+        [2] = { //tv surround #1
+            .bus = {
+                { .volume = 0x8000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
+        },
+        [3] = { //tv surround #2
+            .bus = {
+                { .volume = 0x0000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
+        },
+        [4] = { //tv surround #3
+            .bus = {
+                { .volume = 0x0000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
+        },
+        [5] = { //tv surround #4
+            .bus = {
+                { .volume = 0x0000 }, //bus 0
+                { .volume = 0x0000 }, //bus 1
+                { .volume = 0x0000 }, //bus 2
+                { .volume = 0x0000 }, //bus 3
+            }
+        },
+    };
     uint32_t old_affinity;
     float srcratio;
 
@@ -96,9 +173,6 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
         AXInitWithParams(&initparams);
     } else printf("DEBUG: AX already up?\n");
 
-/* Disable gamepad virtual surround (causes distortion) */
-    AXSetDRCVSMode(0);
-
 /*  Get a voice, top priority (we only need one) */
     this->hidden->voice = AXAcquireVoice(31, NULL, NULL);
     if (!this->hidden->voice) {
@@ -114,8 +188,8 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
 
 /*  Set the voice's volume */
     AXSetVoiceVe(this->hidden->voice, &vol);
-    AXSetVoiceDeviceMix(this->hidden->voice, AX_DEVICE_TYPE_DRC, 0, &drcmix);
-    AXSetVoiceDeviceMix(this->hidden->voice, AX_DEVICE_TYPE_TV, 0, &tvmix);
+    AXSetVoiceDeviceMix(this->hidden->voice, AX_DEVICE_TYPE_DRC, 0, drcmix);
+    AXSetVoiceDeviceMix(this->hidden->voice, AX_DEVICE_TYPE_TV, 0, tvmix);
 
 /*  Set the samplerate conversion ratio
     <source sample rate> / <target sample rate> */
