@@ -34,6 +34,7 @@
 struct SDL_PrivateAudioData {
     /* xasxa */
     AXVoice* voice;
+    AXVoice* voice_r;
     /* The raw allocated mixing buffer. */
     Uint8   *rawbuf;
     /* Individual mixing buffers. */
