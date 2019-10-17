@@ -40,6 +40,8 @@ struct SDL_PrivateAudioData {
     Uint8   *rawbuf;
     /* Individual mixing buffers. */
     Uint8   *mixbufs[NUM_BUFFERS];
+    /* Deinterleaving buffer. */
+    Uint8   *deintvbuf;
 
     int renderingid;
     int playingid;

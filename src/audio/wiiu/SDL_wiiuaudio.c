@@ -141,6 +141,14 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
         DCStoreRange(this->hidden->mixbufs[i], this->spec.size);
     }
 
+/*  Allocate a scratch buffer for deinterleaving operations */
+    this->hidden->deintvbuf = SDL_malloc(this->spec.size);
+    if (this->hidden->deintvbuf == NULL) {
+        AXQuit();
+        printf("DEBUG: Couldn't allocate deinterleave buffer");
+        return SDL_SetError("Couldn't allocate deinterleave buffer");
+    }
+
 
     for (int i = 0; i < this->spec.channels; i++) {
     /*  Get a voice, top priority */
@@ -298,40 +306,36 @@ static void WIIUAUDIO_PlayDevice(_THIS) {
 /*  Deinterleave stereo audio */
     switch (SDL_AUDIO_BITSIZE(this->spec.format)) {
         case 8: {
-            Uint8* samples = this->hidden->mixbufs[this->hidden->renderingid];
-            Uint8  r_samples[this->spec.samples];
-        /*  Put all left samples into the first half of "samples" */
-            for (int i = 0; i < this->spec.samples; i++) {
-                samples[i]   = samples[i*2];
-                r_samples[i] = samples[i*2+1];
+            Uint8* samples = (Uint8*)this->hidden->mixbufs[this->hidden->renderingid];
+            Uint8* deintv = (Uint8*)this->hidden->deintvbuf;
+
+            /* Store the samples in a separate deinterleaved buffer */
+            for (int ch = 0; ch < this->spec.channels; ch++) {
+                for (int i = 0; i < this->spec.samples; i++) {
+                    deintv[this->spec.samples * ch + i] = samples[i * this->spec.channels + ch];
+                }
             }
-        /*  Copy right samples into the last half of "samples" */
-            memcpy(
-                &samples[this->spec.samples],
-                r_samples,
-                this->spec.samples * sizeof(samples[0])
-            );
         } break;
         case 16: {
             Uint16* samples = (Uint16*)this->hidden->mixbufs[this->hidden->renderingid];
+            Uint16* deintv = (Uint16*)this->hidden->deintvbuf;
 
+            /* Store the samples in a separate deinterleaved buffer */
             for (int ch = 0; ch < this->spec.channels; ch++) {
-                Uint16 sample_scratch[this->spec.samples];
-
                 for (int i = 0; i < this->spec.samples; i++) {
-                    sample_scratch[i] = samples[i*this->spec.channels + ch];
+                    deintv[this->spec.samples * ch + i] = samples[i * this->spec.channels + ch];
                 }
-
-                memcpy(
-                    &samples[this->spec.samples * ch],
-                    sample_scratch,
-                    sizeof(sample_scratch)
-                );
             }
         } break;
         default: {} break;
     }
 
+/*  Copy the deinterleaved buffer to the mixing buffer */
+    memcpy(
+        this->hidden->mixbufs[this->hidden->renderingid],
+        this->hidden->deintvbuf,
+        this->spec.size
+    );
 /*  Comment this out for broken-record mode ;3 */
     DCStoreRange(this->hidden->mixbufs[this->hidden->renderingid], this->spec.size);
 /*  Signal we're no longer rendering this buffer, AX callback will notice later */
@@ -363,6 +367,7 @@ static void WIIUAUDIO_CloseDevice(_THIS) {
     for (int i = 0; i < NUM_BUFFERS; i++) {
         if (this->hidden->mixbufs[i]) SDL_free(this->hidden->mixbufs[i]);
     }
+    if (this->hidden->deintvbuf) SDL_free(this->hidden->deintvbuf);
     SDL_free(this->hidden);
 }
 
