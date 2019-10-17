@@ -31,10 +31,11 @@
 
 #define NUM_BUFFERS 2
 
+#define SIZEOF_ARR(arr) (sizeof(arr) / sizeof(arr[0]))
+
 struct SDL_PrivateAudioData {
-    /* xasxa */
-    AXVoice* voice;
-    AXVoice* voice_r;
+    /* 6 possible voices for 6 channels */
+    AXVoice* voice[6];
     /* The raw allocated mixing buffer. */
     Uint8   *rawbuf;
     /* Individual mixing buffers. */
