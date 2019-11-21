@@ -31,6 +31,7 @@
 #include "../SDL_audiodev_c.h"
 #include "../SDL_sysaudio.h"
 #include "SDL_wiiuaudio.h"
+#include "SDL_wiiuaudio_mix.h"
 
 #include <sndcore2/core.h>
 #include <sndcore2/voice.h>
@@ -63,24 +64,6 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
     AXVoiceVeData vol = {
         .volume = 0x8000,
     };
-    //TODO: AXGetDeviceChannelCount. For now we'll use Decaf's values and
-    //configure for stereo (muted surrounds).
-    //According to Decaf, the TV has 6 channels and the gamepad has 4. We set up
-    //both arrays with 6, the Gamepad callbacks just won't use the whole buffer.
-    AXVoiceDeviceMixData l_mix[6] = {
-        [0] = { // left channel
-            .bus = {
-                { .volume = 0x8000 }, //bus 0 (master)
-            }
-        },
-    };
-    AXVoiceDeviceMixData r_mix[6] = {
-        [1] = { //right channel
-            .bus = {
-                { .volume = 0x8000 }, //bus 0 (master)
-            }
-        },
-    };
     uint32_t old_affinity;
     float srcratio;
 
@@ -102,9 +85,9 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
         AXInitWithParams(&initparams);
     } else printf("DEBUG: AX already up?\n");
 
-/*  Stereo only for now TODO */
     if (this->spec.channels < 1) this->spec.channels = 1;
-    if (this->spec.channels > 2) this->spec.channels = 2;
+    if (this->spec.channels > WIIU_MAX_VALID_CHANNELS)
+        this->spec.channels = WIIU_MAX_VALID_CHANNELS;
 
 /*  Force wiiu-compatible audio formats.
     TODO verify - unsigned or signed? */
@@ -163,14 +146,21 @@ static int WIIUAUDIO_OpenDevice(_THIS, void* handle, const char* devname, int is
         AXVoiceBegin(this->hidden->voice[i]);
         AXSetVoiceType(this->hidden->voice[i], 0);
 
-    /*  Set the voice's volume. TODO temp hack for l/r pan, make actual maps */
+    /*  Set the voice's volume. */
         AXSetVoiceVe(this->hidden->voice[i], &vol);
-        if (i == 0) {
-            AXSetVoiceDeviceMix(this->hidden->voice[i], AX_DEVICE_TYPE_DRC, 0, l_mix);
-            AXSetVoiceDeviceMix(this->hidden->voice[i], AX_DEVICE_TYPE_TV, 0, l_mix);
-        } else {
-            AXSetVoiceDeviceMix(this->hidden->voice[i], AX_DEVICE_TYPE_DRC, 0, r_mix);
-            AXSetVoiceDeviceMix(this->hidden->voice[i], AX_DEVICE_TYPE_TV, 0, r_mix);
+        switch (this->spec.channels) {
+            case 1: /* mono */ {
+                AXSetVoiceDeviceMix(this->hidden->voice[i],
+                    AX_DEVICE_TYPE_DRC, 0, mono_mix[i]);
+                AXSetVoiceDeviceMix(this->hidden->voice[i],
+                    AX_DEVICE_TYPE_TV, 0, mono_mix[i]);
+            } break;
+            case 2: /* stereo */ {
+                AXSetVoiceDeviceMix(this->hidden->voice[i],
+                    AX_DEVICE_TYPE_DRC, 0, stereo_mix[i]);
+                AXSetVoiceDeviceMix(this->hidden->voice[i],
+                    AX_DEVICE_TYPE_TV, 0, stereo_mix[i]);
+            } break;
         }
 
     /*  Set the samplerate conversion ratio
