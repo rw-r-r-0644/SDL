@@ -239,8 +239,7 @@ if(WUT)
   string(REPLACE "-g" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
   #Link against needed libraries
-  set(SDL_LIBS "${SDL_LIBS} -lcoreinit -lgx2 -lwhb -lproc_ui -lsysapp -lgfd")
-  set(SDL_LIBS "${SDL_LIBS} -lvpad -lpadscore -lnsysnet -lsndcore2")
+  set(SDL_LIBS "${SDL_LIBS} ${WUT_STANDARD_LIBRARIES}")
 endif()
 
 # Emscripten toolchain has a nonempty default value for this, and the checks
