@@ -132,9 +132,11 @@ int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer,
                          const SDL_FRect * rects, int count);
 int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
                     const SDL_Rect * srcrect, const SDL_FRect * dstrect);
-int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
-                      const SDL_Rect * srcrect, const SDL_FRect * dstrect,
-                      const double angle, const SDL_FPoint * center, const SDL_RendererFlip flip);
+void WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
+                         void* vertexes, size_t vertex_count);
+int WIIU_SDL_QueueCopyEx(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
+                         const SDL_Rect *srcrect, const SDL_FRect *dstrect,
+                         const double angle, const SDL_FPoint *center, const SDL_RendererFlip flip)
 int WIIU_SDL_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
                           Uint32 format, void * pixels, int pitch);
 void WIIU_SDL_RenderPresent(SDL_Renderer * renderer);

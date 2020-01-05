@@ -130,14 +130,11 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     return 0;
 }
 
-
-int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
-                          const SDL_Rect * srcrect, const SDL_FRect * dstrect,
-                          const double angle, const SDL_FPoint * center, const SDL_RendererFlip flip)
-{
+int WIIU_SDL_QueueCopyEx(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
+                         const SDL_Rect *srcrect, const SDL_FRect *dstrect,
+                         const double angle, const SDL_FPoint *center, const SDL_RendererFlip flip) {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
-    GX2RBuffer *a_position, *a_texCoord;
     WIIUVec2 *a_position_vals, *a_texCoord_vals;
 
     /* Compute real vertex points */
@@ -167,6 +164,63 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
         },
     };
 
+/*  We are INTERLEAVING the vertexes in this buffer.
+    1 a_position vector, 1 a_texCoord vector, repeat.
+    SDL only lets us do one allocation per render command and interleaving
+    makes performance sense here */
+    a_position_vals = (WIIUVec2*) SDL_AllocateRenderVertices(renderer,
+        sizeof(WIIUVec2) /* float x/y for each corner */
+            * 4 /* 4 corners */
+            * 2 /* 2 attribute buffers */,
+        4, //TODO align? GX2R uses 256 (!)
+        &cmd->data.draw.first
+    );
+    a_texCoord_vals = a_position_vals + 1;
+
+/*  Save vertex points */
+    for (int i = 0; i < 4; i++) {
+        a_position_vals[i *2] = (WIIUVec2) {
+            .x = cx + (SDL_cos(r) * (rvb[i].x - cx) - SDL_sin(r) * (rvb[i].y - cy)),
+            .y = cy + (SDL_cos(r) * (rvb[i].y - cy) + SDL_sin(r) * (rvb[i].x - cx)),
+        };
+    }
+
+/*  Save texture coordinates (*2 are because interleaving) */
+    a_texCoord_vals[0 *2] = (WIIUVec2) {
+        .x = srcrect->x,
+        .y = srcrect->y + srcrect->h,
+    };
+    a_texCoord_vals[1 *2] = (WIIUVec2) {
+        .x = srcrect->x + srcrect->w,
+        .y = srcrect->y + srcrect->h,
+    };
+    a_texCoord_vals[2 *2] = (WIIUVec2) {
+        .x = srcrect->x + srcrect->w,
+        .y = srcrect->y,
+    };
+    a_texCoord_vals[3 *2] = (WIIUVec2) {
+        .x = srcrect->x,
+        .y = srcrect->y,
+    };
+
+    return 0;
+}
+
+/*  This function is identical for Copy and CopyEx */
+void WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
+                         void* vertexes, size_t vertex_count)
+{
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+    WIIUVec2 *a_position_vals, *a_texCoord_vals;
+    size_t count, stride;
+
+/*  Set up pointers for deinterleaving */
+    a_position_vals = (WIIUVec2*)vertexes;
+    a_texCoord_vals = a_position_vals + 1;
+    count = vertex_count / 2;
+    stride = sizeof(a_position_vals[0]) * 2;
+
     if (texture->access & SDL_TEXTUREACCESS_TARGET) {
         GX2RInvalidateSurface(&tdata->texture.surface, 0, 0);
     }
@@ -174,65 +228,24 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     /* Update texture rendering state */
     WIIU_TextureStartRendering(data, tdata);
 
-    /* Allocate attribute buffers */
-    a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
-        .flags =
-            GX2R_RESOURCE_BIND_VERTEX_BUFFER |
-            GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = sizeof(WIIUVec2), // float x/y for each corner
-        .elemCount = 4, // 4 corners
-    });
-    a_texCoord = WIIU_AllocRenderData(data, (GX2RBuffer) {
-        .flags =
-            GX2R_RESOURCE_BIND_VERTEX_BUFFER |
-            GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = sizeof(WIIUVec2), // float x/y for each corner
-        .elemCount = 4, // 4 corners
-    });
-
-    /* Save vertex points */
-    a_position_vals = GX2RLockBufferEx(a_position, 0);
-    for (int i = 0; i < 4; i++) {
-        a_position_vals[i] = (WIIUVec2) {
-            .x = cx + (SDL_cos(r) * (rvb[i].x - cx) - SDL_sin(r) * (rvb[i].y - cy)),
-            .y = cy + (SDL_cos(r) * (rvb[i].y - cy) + SDL_sin(r) * (rvb[i].x - cx)),
-        };
-    }
-    GX2RUnlockBufferEx(a_position, 0);
-
-    /* Compute texture coords */
-    a_texCoord_vals = GX2RLockBufferEx(a_texCoord, 0);
-    a_texCoord_vals[0] = (WIIUVec2) {
-        .x = srcrect->x,
-        .y = srcrect->y + srcrect->h,
-    };
-    a_texCoord_vals[1] = (WIIUVec2) {
-        .x = srcrect->x + srcrect->w,
-        .y = srcrect->y + srcrect->h,
-    };
-    a_texCoord_vals[2] = (WIIUVec2) {
-        .x = srcrect->x + srcrect->w,
-        .y = srcrect->y,
-    };
-    a_texCoord_vals[3] = (WIIUVec2) {
-        .x = srcrect->x,
-        .y = srcrect->y,
-    };
-    GX2RUnlockBufferEx(a_texCoord, 0);
+/*  Invalidate caches related to vertexes */
+    GX2Invalidate(
+        GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER,
+        vertexes,
+        count * stride
+    );
 
     /* Render */
     wiiuSetTextureShader();
     GX2SetPixelTexture(&tdata->texture, 0);
     GX2SetPixelSampler(&tdata->sampler, 0);
-    GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
-    GX2RSetAttributeBuffer(a_texCoord, 1, a_texCoord->elemSize, 0);
+    GX2SetAttribBuffer(0, count * stride, stride, a_position_vals);
+    GX2SetAttribBuffer(1, count * stride, stride, a_texCoord_vals); //TODO runs off end of buffer lol
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)&tdata->u_texSize);
     GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t *)&tdata->u_mod);
     WIIU_SDL_SetGX2BlendMode(texture->blendMode);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
-
-    return 0;
 }
 
 int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points,
