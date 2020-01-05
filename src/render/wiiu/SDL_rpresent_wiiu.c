@@ -126,7 +126,10 @@ void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
     Uint32 flags = SDL_GetWindowFlags(renderer->window);
 
-    WHBGfxBeginRender();
+    if (renderer->info.flags & SDL_RENDERER_PRESENTVSYNC) {
+    /*  NOTE watch libwhb's source to ensure this call only does vsync */
+        WHBGfxBeginRender();
+    }
 
     /* Only render to TV if the window is *not* drc-only */
     if (!(flags & SDL_WINDOW_WIIU_GAMEPAD_ONLY)) {
