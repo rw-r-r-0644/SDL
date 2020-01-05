@@ -32,10 +32,16 @@
 #include <gx2/event.h>
 #include <gx2/registers.h>
 #include <gx2r/surface.h>
+#include <gx2/clear.h>
 
 #include <malloc.h>
 
 SDL_RenderDriver WIIU_RenderDriver;
+
+//TODO temp stubs
+int WIIU_SDL_stub(SDL_Renderer * renderer, SDL_RenderCommand *cmd) {
+    return 0;
+}
 
 SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
 {
@@ -59,20 +65,20 @@ SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->WindowEvent = WIIU_SDL_WindowEvent;
     renderer->GetOutputSize = WIIU_SDL_GetOutputSize;
     renderer->CreateTexture = WIIU_SDL_CreateTexture;
-    renderer->SetTextureColorMod = WIIU_SDL_SetTextureColorMod;
-    renderer->SetTextureAlphaMod = WIIU_SDL_SetTextureAlphaMod;
+
     renderer->UpdateTexture = WIIU_SDL_UpdateTexture;
     renderer->LockTexture = WIIU_SDL_LockTexture;
     renderer->UnlockTexture = WIIU_SDL_UnlockTexture;
     renderer->SetRenderTarget = WIIU_SDL_SetRenderTarget;
-    renderer->UpdateViewport = WIIU_SDL_UpdateViewport;
-    renderer->UpdateClipRect = WIIU_SDL_UpdateClipRect;
-    renderer->RenderClear = WIIU_SDL_RenderClear;
-    renderer->RenderDrawPoints = WIIU_SDL_RenderDrawPoints;
-    renderer->RenderDrawLines = WIIU_SDL_RenderDrawLines;
-    renderer->RenderFillRects = WIIU_SDL_RenderFillRects;
-    renderer->RenderCopy = WIIU_SDL_RenderCopy;
-    renderer->RenderCopyEx = WIIU_SDL_RenderCopyEx;
+
+    renderer->RunCommandQueue = WIIU_SDL_RunCommandQueue;
+    renderer->QueueDrawPoints = WIIU_SDL_QueueDrawPointsLines;
+    renderer->QueueDrawLines = WIIU_SDL_QueueDrawPointsLines;
+    renderer->QueueCopy = WIIU_SDL_QueueCopy;
+    renderer->QueueCopyEx = WIIU_SDL_QueueCopyEx;
+    renderer->QueueSetViewport = WIIU_SDL_stub;
+    renderer->QueueSetDrawColor = WIIU_SDL_stub;
+
     renderer->RenderReadPixels = WIIU_SDL_RenderReadPixels;
     renderer->RenderPresent = WIIU_SDL_RenderPresent;
     renderer->DestroyTexture = WIIU_SDL_DestroyTexture;
@@ -149,6 +155,45 @@ void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window)
 
     /* Setup texture and color buffer for the window */
     WIIU_SDL_CreateTexture(renderer, &data->windowTex);
+}
+
+int WIIU_SDL_RunCommandQueue(SDL_Renderer* renderer, SDL_RenderCommand* cmd, void* vertexes, size_t vertsize) {
+    //todo set gpu context
+
+    while (cmd) {
+        switch (cmd->command) {
+            case SDL_RENDERCMD_CLEAR: {
+                WIIU_RenderData* data = (WIIU_RenderData*) renderer->driverdata;
+                SDL_Texture* target = WIIU_GetRenderTarget(renderer);
+                WIIU_TextureData* tdata = (WIIU_TextureData*) target->driverdata;
+
+                GX2ClearColor(&tdata->cbuf,
+                    (float)cmd->data.color.r / 255.0f,
+                    (float)cmd->data.color.g / 255.0f,
+                    (float)cmd->data.color.b / 255.0f,
+                    (float)cmd->data.color.a / 255.0f);
+
+            /*  Restore SDL context state */
+                GX2SetContextState(data->ctx);
+                break;
+            }
+            case SDL_RENDERCMD_DRAW_POINTS:
+            case SDL_RENDERCMD_DRAW_LINES:
+            case SDL_RENDERCMD_FILL_RECTS: {
+                WIIU_SDL_RenderDrawPrimitive(renderer, cmd, vertexes + cmd->data.draw.first);
+                break;
+            }
+            case SDL_RENDERCMD_COPY:
+            case SDL_RENDERCMD_COPY_EX: {
+                WIIU_SDL_RenderCopy(renderer, cmd, vertexes + cmd->data.draw.first);
+                break;
+            }
+            case SDL_RENDERCMD_NO_OP: break;
+            default: break; //TODO temp
+        }
+        cmd = cmd->next;
+    }
+    return 0;
 }
 
 int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)

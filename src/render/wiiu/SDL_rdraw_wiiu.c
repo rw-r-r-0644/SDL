@@ -49,10 +49,8 @@
 
 static void WIIU_SDL_SetGX2BlendMode(SDL_BlendMode mode);
 
-int WIIU_SDL_QueueCopy(SDL_Renderer * renderer, SDL_Texture * texture,
+int WIIU_SDL_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * texture,
                        const SDL_Rect * srcrect, const SDL_FRect * dstrect) {
-    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
     WIIUVec2 *a_position_vals, *a_texCoord_vals;
     float x_min, y_min, x_max, y_max;
 
@@ -66,10 +64,10 @@ int WIIU_SDL_QueueCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     1 a_position vector, 1 a_texCoord vector, repeat.
     SDL only lets us do one allocation per render command and interleaving
     makes performance sense here */
+    cmd->data.draw.count = 4 /* corners */ * 2 /* attribte buffers */;
     a_position_vals = (WIIUVec2*) SDL_AllocateRenderVertices(renderer,
         sizeof(WIIUVec2) /* float x/y for each corner */
-            * 4 /* 4 corners */
-            * 2 /* 2 attribute buffers */,
+            * cmd->data.draw.count,
         4, //TODO align? GX2R uses 256 (!)
         &cmd->data.draw.first
     );
@@ -105,8 +103,6 @@ int WIIU_SDL_QueueCopy(SDL_Renderer * renderer, SDL_Texture * texture,
 int WIIU_SDL_QueueCopyEx(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
                          const SDL_Rect *srcrect, const SDL_FRect *dstrect,
                          const double angle, const SDL_FPoint *center, const SDL_RendererFlip flip) {
-    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
     WIIUVec2 *a_position_vals, *a_texCoord_vals;
 
     /* Compute real vertex points */
@@ -140,10 +136,10 @@ int WIIU_SDL_QueueCopyEx(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Tex
     1 a_position vector, 1 a_texCoord vector, repeat.
     SDL only lets us do one allocation per render command and interleaving
     makes performance sense here */
+    cmd->data.draw.count = 4 /* corners */ * 2 /* attribte buffers */;
     a_position_vals = (WIIUVec2*) SDL_AllocateRenderVertices(renderer,
         sizeof(WIIUVec2) /* float x/y for each corner */
-            * 4 /* 4 corners */
-            * 2 /* 2 attribute buffers */,
+            * cmd->data.draw.count,
         4, //TODO align? GX2R uses 256 (!)
         &cmd->data.draw.first
     );
@@ -179,21 +175,20 @@ int WIIU_SDL_QueueCopyEx(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Tex
 }
 
 /*  This function is identical for Copy and CopyEx */
-void WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
-                         void* vertexes, size_t vertex_count)
+void WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_RenderCommand* cmd, void* vertexes)
 {
     WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    WIIU_TextureData *tdata = (WIIU_TextureData *) texture->driverdata;
+    WIIU_TextureData *tdata = (WIIU_TextureData *) cmd->data.draw.texture->driverdata;
     WIIUVec2 *a_position_vals, *a_texCoord_vals;
     size_t count, stride;
 
 /*  Set up pointers for deinterleaving */
     a_position_vals = (WIIUVec2*)vertexes;
     a_texCoord_vals = a_position_vals + 1;
-    count = vertex_count / 2;
+    count = cmd->data.draw.count / 2;
     stride = sizeof(a_position_vals[0]) * 2;
 
-    if (texture->access & SDL_TEXTUREACCESS_TARGET) {
+    if (cmd->data.draw.texture->access & SDL_TEXTUREACCESS_TARGET) {
         GX2RInvalidateSurface(&tdata->texture.surface, 0, 0);
     }
 
@@ -216,177 +211,102 @@ void WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
     GX2SetVertexUniformReg(wiiuTextureShader.vertexShader->uniformVars[1].offset, 4, (uint32_t *)&tdata->u_texSize);
     GX2SetPixelUniformReg(wiiuTextureShader.pixelShader->uniformVars[0].offset, 4, (uint32_t *)&tdata->u_mod);
-    WIIU_SDL_SetGX2BlendMode(texture->blendMode);
+    WIIU_SDL_SetGX2BlendMode(cmd->data.draw.blend);
     GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4, 0, 1);
 }
 
-int WIIU_SDL_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points,
-                              int count)
-{
-    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    GX2RBuffer *a_position;
+int WIIU_SDL_QueueDrawPointsLines(SDL_Renderer* renderer, SDL_RenderCommand* cmd, const SDL_FPoint* points, int count) {
     WIIUVec2 *a_position_vals;
 
-    /* Compute colours */
-    WIIUVec4 u_colour = {
-        .r = (float)renderer->r / 255.0f,
-        .g = (float)renderer->g / 255.0f,
-        .b = (float)renderer->b / 255.0f,
-        .a = (float)renderer->a / 255.0f,
-    };
+    cmd->data.draw.count = count;
+    a_position_vals = SDL_AllocateRenderVertices(renderer,
+        sizeof (WIIUVec2) /* float x/y for each point */
+            * cmd->data.draw.count,
+        4, //TODO align
+        &cmd->data.draw.first
+    );
 
-    /* Allocate attribute buffers */
-    a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
-        .flags =
-            GX2R_RESOURCE_BIND_VERTEX_BUFFER |
-            GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = sizeof(WIIUVec2), /* float x/y for each point */
-        .elemCount = count,
-    });
-
-    /* Compute vertex positions */
-    a_position_vals = GX2RLockBufferEx(a_position, 0);
     for (int i = 0; i < count; ++i) {
         a_position_vals[i] = (WIIUVec2) {
-            .x = (float)renderer->viewport.x + points[i].x,
-            .y = (float)renderer->viewport.y + points[i].y,
+        /*  TODO this code used to add the viewport x/y, this is broken with
+            batching. Check if that behaviour was correct */
+            .x = points[i].x,
+            .y = points[i].y,
         };
     }
-    GX2RUnlockBufferEx(a_position, 0);
+
+    return 0;
+}
+
+int WIIU_SDL_QueueFillRects(SDL_Renderer* renderer, SDL_RenderCommand* cmd, const SDL_FRect* rects, int count) {
+    WIIUVec2 *a_position_vals;
+
+    cmd->data.draw.count = count * 4 /* 4 vertexes per rect */;
+    a_position_vals = SDL_AllocateRenderVertices(renderer,
+        sizeof (WIIUVec2) /* float x/y for each point */
+            * cmd->data.draw.count,
+        4, //TODO align
+        &cmd->data.draw.first
+    );
+
+    for (int i = 0; i < count; ++i) {
+        a_position_vals[i*4 + 0] = (WIIUVec2) {
+        /*  TODO this code used to add the viewport x/y, this is broken with
+            batching. Check if that behaviour was correct */
+            .x = rects[i].x,
+            .y = rects[i].y,
+        };
+        a_position_vals[i*4 + 1] = (WIIUVec2) {
+            .x = rects[i].x + rects[i].w,
+            .y = rects[i].y,
+        };
+        a_position_vals[i*4 + 2] = (WIIUVec2) {
+            .x = rects[i].x + rects[i].w,
+            .y = rects[i].y + rects[i].h,
+        };
+        a_position_vals[i*4 + 3] = (WIIUVec2) {
+            .x = rects[i].x,
+            .y = rects[i].y + rects[i].h,
+        };
+    }
+
+    return 0;
+}
+
+void WIIU_SDL_RenderDrawPrimitive(SDL_Renderer * renderer, SDL_RenderCommand* cmd, void* vertexes) {
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    size_t count, stride;
+
+    WIIUVec4 u_colour = {
+        .r = (float)cmd->data.draw.r / 255.0f,
+        .g = (float)cmd->data.draw.g / 255.0f,
+        .b = (float)cmd->data.draw.b / 255.0f,
+        .a = (float)cmd->data.draw.a / 255.0f,
+    };
+
+    count = cmd->data.draw.count;
+    stride = sizeof(WIIUVec2);
+
+/*  Invalidate caches related to vertexes */
+    GX2Invalidate(
+        GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER,
+        vertexes,
+        count * stride
+    );
 
     /* Render points */
     wiiuSetColorShader();
-    GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
+    GX2SetAttribBuffer(0, count * stride, stride, vertexes);
     GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
     GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t *)&u_colour);
-    WIIU_SDL_SetGX2BlendMode(renderer->blendMode);
-    GX2DrawEx(GX2_PRIMITIVE_MODE_POINTS, count, 0, 1);
-
-    return 0;
-}
-
-
-int WIIU_SDL_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
-                             int count)
-{
-    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    GX2RBuffer *a_position;
-    WIIUVec2 *a_position_vals;
-
-    /* Compute colours */
-    WIIUVec4 u_colour = {
-        .r = (float)renderer->r / 255.0f,
-        .g = (float)renderer->g / 255.0f,
-        .b = (float)renderer->b / 255.0f,
-        .a = (float)renderer->a / 255.0f,
-    };
-
-    /*  Allocate attribute buffers */
-    a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
-        .flags =
-            GX2R_RESOURCE_BIND_VERTEX_BUFFER |
-            GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = sizeof(WIIUVec2), /* float x/y for each point */
-        .elemCount = count,
-    });
-
-    /* Compute vertex positions */
-    a_position_vals = GX2RLockBufferEx(a_position, 0);
-    for (int i = 0; i < count; ++i) {
-        a_position_vals[i] = (WIIUVec2) {
-            .x = (float)renderer->viewport.x + points[i].x,
-            .y = (float)renderer->viewport.y + points[i].y,
-        };
+    WIIU_SDL_SetGX2BlendMode(cmd->data.draw.blend);
+    if (cmd->command == SDL_RENDERCMD_DRAW_POINTS) {
+        GX2DrawEx(GX2_PRIMITIVE_MODE_POINTS, count, 0, 1);
+    } else if (cmd->command == SDL_RENDERCMD_DRAW_LINES) {
+        GX2DrawEx(GX2_PRIMITIVE_MODE_LINE_STRIP, count, 0, 1);
+    } else if (cmd->command == SDL_RENDERCMD_FILL_RECTS) {
+        GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, count, 0, 1);
     }
-    GX2RUnlockBufferEx(a_position, 0);
-
-    /* Render lines */
-    wiiuSetColorShader();
-    GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
-    GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
-    GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t *)&u_colour);
-    WIIU_SDL_SetGX2BlendMode(renderer->blendMode);
-    GX2DrawEx(GX2_PRIMITIVE_MODE_LINE_STRIP, count, 0, 1);
-
-    return 0;
-}
-
-int WIIU_SDL_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count)
-{
-    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
-    GX2RBuffer *a_position;
-    WIIUVec2 *a_position_vals;
-
-    /* Compute colours */
-    WIIUVec4 u_colour = {
-        .r = (float)renderer->r / 255.0f,
-        .g = (float)renderer->g / 255.0f,
-        .b = (float)renderer->b / 255.0f,
-        .a = (float)renderer->a / 255.0f,
-    };
-
-    /* Compute vertex pos */
-    float vx = (float)renderer->viewport.x;
-    float vy = (float)renderer->viewport.y;
-
-    /*  Allocate attribute buffers */
-    a_position = WIIU_AllocRenderData(data, (GX2RBuffer) {
-        .flags =
-            GX2R_RESOURCE_BIND_VERTEX_BUFFER |
-            GX2R_RESOURCE_USAGE_CPU_WRITE,
-        .elemSize = sizeof(WIIUVec2), // x/y float per corner
-        .elemCount = 4 * count, // 4 corners per square
-    });
-
-    /* Compute vertex positions */
-    a_position_vals = GX2RLockBufferEx(a_position, 0);
-    for (int i = 0; i < count; ++i) {
-        a_position_vals[i*4 + 0] = (WIIUVec2) {
-            .x = vx + rects[i].x,
-            .y = vy + rects[i].y,
-        };
-        a_position_vals[i*4 + 1] = (WIIUVec2) {
-            .x = vx + rects[i].x + rects[i].w,
-            .y = vy + rects[i].y,
-        };
-        a_position_vals[i*4 + 2] = (WIIUVec2) {
-            .x = vx + rects[i].x + rects[i].w,
-            .y = vy + rects[i].y + rects[i].h,
-        };
-        a_position_vals[i*4 + 3] = (WIIUVec2) {
-            .x = vx + rects[i].x,
-            .y = vy + rects[i].y + rects[i].h,
-        };
-    }
-    GX2RUnlockBufferEx(a_position, 0);
-
-    /* Render rects */
-    wiiuSetColorShader();
-    GX2RSetAttributeBuffer(a_position, 0, a_position->elemSize, 0);
-    GX2SetVertexUniformReg(wiiuColorShader.vertexShader->uniformVars[0].offset, 4, (uint32_t *)&data->u_viewSize);
-    GX2SetPixelUniformReg(wiiuColorShader.pixelShader->uniformVars[0].offset, 4, (uint32_t *)&u_colour);
-    WIIU_SDL_SetGX2BlendMode(renderer->blendMode);
-    GX2DrawEx(GX2_PRIMITIVE_MODE_QUADS, 4 * count, 0, 1);
-
-    return 0;
-}
-
-int WIIU_SDL_RenderClear(SDL_Renderer * renderer)
-{
-    WIIU_RenderData* data = (WIIU_RenderData*) renderer->driverdata;
-    SDL_Texture* target = WIIU_GetRenderTarget(renderer);
-    WIIU_TextureData* tdata = (WIIU_TextureData*) target->driverdata;
-
-    GX2ClearColor(&tdata->cbuf,
-                  (float)renderer->r / 255.0f,
-                  (float)renderer->g / 255.0f,
-                  (float)renderer->b / 255.0f,
-                  (float)renderer->a / 255.0f);
-
-    /* Restore SDL context state */
-    GX2SetContextState(data->ctx);
-
-    return 0;
 }
 
 static void WIIU_SDL_SetGX2BlendMode(SDL_BlendMode mode)
