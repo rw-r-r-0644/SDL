@@ -74,6 +74,7 @@ SDL_Renderer *WIIU_SDL_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->RunCommandQueue = WIIU_SDL_RunCommandQueue;
     renderer->QueueDrawPoints = WIIU_SDL_QueueDrawPointsLines;
     renderer->QueueDrawLines = WIIU_SDL_QueueDrawPointsLines;
+    renderer->QueueFillRects = WIIU_SDL_QueueFillRects;
     renderer->QueueCopy = WIIU_SDL_QueueCopy;
     renderer->QueueCopyEx = WIIU_SDL_QueueCopyEx;
     renderer->QueueSetViewport = WIIU_SDL_stub;
