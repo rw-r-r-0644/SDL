@@ -264,7 +264,7 @@ static int WIIU_JoystickOpen(SDL_Joystick *joystick, int device_index)
 	int wiiu_device = WIIU_GetDeviceForIndex(device_index);
 	switch (wiiu_device) {
 		case WIIU_DEVICE_GAMEPAD: {
-			SDL_AddTouch(0, "WiiU Gamepad Touchscreen");
+			SDL_AddTouch(0, SDL_TOUCH_DEVICE_INDIRECT_ABSOLUTE, "WiiU Gamepad Touchscreen");
 			joystick->nbuttons = SIZEOF_ARR(vpad_button_map);
 			joystick->naxes = 4;
 			joystick->nhats = 0;
