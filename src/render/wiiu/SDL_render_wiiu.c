@@ -159,12 +159,17 @@ void WIIU_SDL_CreateWindowTex(SDL_Renderer * renderer, SDL_Window * window)
 }
 
 int WIIU_SDL_RunCommandQueue(SDL_Renderer* renderer, SDL_RenderCommand* cmd, void* vertexes, size_t vertsize) {
-    //todo set gpu context
+    WIIU_RenderData *data = (WIIU_RenderData *) renderer->driverdata;
+    /* Set context state for all upcoming GX2 calls */
+    GX2SetContextState(data->ctx);
 
     while (cmd) {
         switch (cmd->command) {
+            case SDL_RENDERCMD_SETVIEWPORT: {
+                WIIU_SDL_UpdateViewport(renderer, cmd->data.viewport.rect);
+                break;
+            }
             case SDL_RENDERCMD_CLEAR: {
-                WIIU_RenderData* data = (WIIU_RenderData*) renderer->driverdata;
                 SDL_Texture* target = WIIU_GetRenderTarget(renderer);
                 WIIU_TextureData* tdata = (WIIU_TextureData*) target->driverdata;
 
@@ -220,7 +225,7 @@ int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
     /* These may be unnecessary - see SDL_render.c: SDL_SetRenderTarget's calls
        to UpdateViewport and UpdateClipRect. TODO for once the render is
        basically working */
-    GX2SetViewport(0, 0, (float)tdata->cbuf.surface.width, (float)tdata->cbuf.surface.height, 0.0f, 1.0f);
+    //GX2SetViewport(0, 0, (float)tdata->cbuf.surface.width - 600, (float)tdata->cbuf.surface.height, 0.0f, 1.0f);
     GX2SetScissor(0, 0, (float)tdata->cbuf.surface.width, (float)tdata->cbuf.surface.height);
 
     return 0;

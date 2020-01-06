@@ -150,8 +150,7 @@ void WIIU_SDL_RenderPresent(SDL_Renderer * renderer)
     WIIU_FreeRenderData(data);
     WIIU_TextureDoneRendering(data);
 
-    /* Restore SDL context state */
-    GX2SetContextState(data->ctx);
+    /* SDL context state will be restored in next RunCommandQueue call */
 }
 
 #endif /* SDL_VIDEO_RENDER_WIIU */

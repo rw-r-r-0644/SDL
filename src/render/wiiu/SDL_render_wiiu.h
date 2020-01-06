@@ -117,7 +117,7 @@ int WIIU_SDL_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                      const SDL_Rect * rect, void **pixels, int *pitch);
 void WIIU_SDL_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture);
 int WIIU_SDL_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture);
-int WIIU_SDL_UpdateViewport(SDL_Renderer * renderer);
+int WIIU_SDL_UpdateViewport(SDL_Renderer * renderer, SDL_Rect vp);
 int WIIU_SDL_UpdateClipRect(SDL_Renderer * renderer);
 
 int WIIU_SDL_RunCommandQueue(SDL_Renderer* renderer, SDL_RenderCommand* cmd, void* vertexes, size_t vertsize);

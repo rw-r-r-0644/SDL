@@ -26,6 +26,8 @@
 #include "../SDL_sysrender.h"
 #include "SDL_render_wiiu.h"
 
+#include <gx2/registers.h>
+
 void WIIU_SDL_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 {
     if (event->event == SDL_WINDOWEVENT_SIZE_CHANGED) {
@@ -48,8 +50,9 @@ int WIIU_SDL_GetOutputSize(SDL_Renderer * renderer, int *w, int *h)
 
 /* We handle all viewport changes in the render functions and shaders, so we
    don't actually have to do anything here. SDL still requires we implement it. */
-int WIIU_SDL_UpdateViewport(SDL_Renderer * renderer)
+int WIIU_SDL_UpdateViewport(SDL_Renderer * renderer, SDL_Rect vp)
 {
+    GX2SetViewport(vp.x, vp.y, vp.w, vp.h, 0.0f, 1.0f);
     return 0;
 }
 
