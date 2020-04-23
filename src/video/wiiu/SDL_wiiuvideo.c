@@ -46,12 +46,16 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <proc_ui/procui.h>
+
 #include "wiiu_shaders.h"
 
 static int WIIU_VideoInit(_THIS);
 static int WIIU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
 static void WIIU_VideoQuit(_THIS);
 static void WIIU_PumpEvents(_THIS);
+
+static int using_whb_proc = 0;
 
 #define SCREEN_WIDTH    1280
 #define SCREEN_HEIGHT   720
@@ -60,7 +64,10 @@ static int WIIU_VideoInit(_THIS)
 {
 	SDL_DisplayMode mode;
 
-	WHBProcInit();
+	if (!ProcUIIsRunning()) {
+		WHBProcInit();
+		using_whb_proc = 1;
+	}
 	WHBGfxInit();
 
 	// setup shader
@@ -82,9 +89,9 @@ static int WIIU_VideoInit(_THIS)
 
 static void WIIU_VideoQuit(_THIS)
 {
-    wiiuFreeTextureShader();
+	wiiuFreeTextureShader();
 	WHBGfxShutdown();
-	WHBProcShutdown();
+	if (using_whb_proc) WHBProcShutdown();
 }
 
 static int WIIU_CreateSDLWindow(_THIS, SDL_Window *window) {
