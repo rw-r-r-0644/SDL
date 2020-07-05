@@ -370,8 +370,8 @@ static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 		}
 
 		/* touchscreen */
-	    window = SDL_GetFocusWindow();
-	    if (window != NULL) {
+		window = SDL_GetFocusWindow();
+		if (window != NULL) {
 			VPADGetTPCalibratedPoint(VPAD_CHAN_0, &tpdata, &vpad.tpNormal);
 			if (tpdata.touched) {
 				/* Send an initial touch */
@@ -531,7 +531,7 @@ SDL_JoystickDriver SDL_WIIU_JoystickDriver =
 	WIIU_JoystickDetect,
 	WIIU_JoystickGetDeviceName,
 	WIIU_JoystickGetDevicePlayerIndex,
-    WIIU_JoystickSetDevicePlayerIndex,
+	WIIU_JoystickSetDevicePlayerIndex,
 	WIIU_JoystickGetDeviceGUID,
 	WIIU_JoystickGetDeviceInstanceID,
 	WIIU_JoystickOpen,
