@@ -89,29 +89,29 @@ int WIIU_SDL_RenderCopy(SDL_Renderer * renderer, SDL_Texture * texture,
 
     /* Save them */
     a_position_vals = GX2RLockBufferEx(a_position, 0);
-    a_position_vals[0] = (WIIUVec2){.x = x_min, .y = y_min};
-    a_position_vals[1] = (WIIUVec2){.x = x_max, .y = y_min};
-    a_position_vals[2] = (WIIUVec2){.x = x_max, .y = y_max};
-    a_position_vals[3] = (WIIUVec2){.x = x_min, .y = y_max};
+    a_position_vals[0] = (WIIUVec2){.x = x_min, .y = y_max};
+    a_position_vals[1] = (WIIUVec2){.x = x_max, .y = y_max};
+    a_position_vals[2] = (WIIUVec2){.x = x_max, .y = y_min};
+    a_position_vals[3] = (WIIUVec2){.x = x_min, .y = y_min};
     GX2RUnlockBufferEx(a_position, 0);
 
     /* Compute texture coords */
     a_texCoord_vals = GX2RLockBufferEx(a_texCoord, 0);
     a_texCoord_vals[0] = (WIIUVec2) {
         .x = srcrect->x,
-        .y = srcrect->y + srcrect->h,
+        .y = texture->h - srcrect->y - srcrect->h,
     };
     a_texCoord_vals[1] = (WIIUVec2) {
         .x = srcrect->x + srcrect->w,
-        .y = srcrect->y + srcrect->h,
+        .y = texture->h - srcrect->y - srcrect->h,
     };
     a_texCoord_vals[2] = (WIIUVec2) {
         .x = srcrect->x + srcrect->w,
-        .y = srcrect->y,
+        .y = texture->h - srcrect->y,
     };
     a_texCoord_vals[3] = (WIIUVec2) {
         .x = srcrect->x,
-        .y = srcrect->y,
+        .y = texture->h - srcrect->y,
     };
     GX2RUnlockBufferEx(a_texCoord, 0);
 
@@ -151,19 +151,19 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     WIIUVec2 rvb[4] = {
         {
             .x = (flip & SDL_FLIP_HORIZONTAL) ? x_max : x_min,
-            .y = (flip & SDL_FLIP_VERTICAL) ? y_max : y_min,
-        },
-        {
-            .x = (flip & SDL_FLIP_HORIZONTAL) ? x_min : x_max,
-            .y = (flip & SDL_FLIP_VERTICAL) ? y_max : y_min,
+            .y = (flip & SDL_FLIP_VERTICAL) ? y_min : y_max,
         },
         {
             .x = (flip & SDL_FLIP_HORIZONTAL) ? x_min : x_max,
             .y = (flip & SDL_FLIP_VERTICAL) ? y_min : y_max,
+        },
+        {
+            .x = (flip & SDL_FLIP_HORIZONTAL) ? x_min : x_max,
+            .y = (flip & SDL_FLIP_VERTICAL) ? y_max : y_min,
         },
         {
             .x = (flip & SDL_FLIP_HORIZONTAL) ? x_max : x_min,
-            .y = (flip & SDL_FLIP_VERTICAL) ? y_min : y_max,
+            .y = (flip & SDL_FLIP_VERTICAL) ? y_max : y_min,
         },
     };
 
@@ -204,19 +204,19 @@ int WIIU_SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     a_texCoord_vals = GX2RLockBufferEx(a_texCoord, 0);
     a_texCoord_vals[0] = (WIIUVec2) {
         .x = srcrect->x,
-        .y = srcrect->y + srcrect->h,
+        .y = texture->h - srcrect->y - srcrect->h,
     };
     a_texCoord_vals[1] = (WIIUVec2) {
         .x = srcrect->x + srcrect->w,
-        .y = srcrect->y + srcrect->h,
+        .y = texture->h - srcrect->y - srcrect->h,
     };
     a_texCoord_vals[2] = (WIIUVec2) {
         .x = srcrect->x + srcrect->w,
-        .y = srcrect->y,
+        .y = texture->h - srcrect->y,
     };
     a_texCoord_vals[3] = (WIIUVec2) {
         .x = srcrect->x,
-        .y = srcrect->y,
+        .y = texture->h - srcrect->y,
     };
     GX2RUnlockBufferEx(a_texCoord, 0);
 
