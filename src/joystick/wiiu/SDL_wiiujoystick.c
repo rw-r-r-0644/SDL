@@ -329,6 +329,13 @@ static int WIIU_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rum
 	return SDL_Unsupported();
 }
 
+static void fireQuitEvent()
+{
+	SDL_Event event;
+	event.type = SDL_QUIT;
+	SDL_PushEvent(&event);
+}
+
 /* Function to update the state of a joystick - called as a device poll.
  * This function shouldn't update the joystick structure directly,
  * but instead should call SDL_PrivateJoystick*() to deliver events
@@ -416,6 +423,11 @@ static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 		for(int i = 0; i < joystick->nbuttons; i++)
 			if (vpad.release & vpad_button_map[i])
 				SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_RELEASED);
+
+		/* send exit event on home, top-level app can choose to quit */
+		if (vpad.trigger & VPAD_BUTTON_HOME)
+			fireQuitEvent();		
+
 	} else if (
 		joystick->instance_id == WIIU_GetInstForDevice(WIIU_DEVICE_WPAD(0)) ||
 		joystick->instance_id == WIIU_GetInstForDevice(WIIU_DEVICE_WPAD(1)) ||
@@ -444,6 +456,9 @@ static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 			for(int i = 0; i < joystick->nbuttons; i++)
 				if (kpad.release & wiimote_button_map[i])
 					SDL_PrivateJoystickButton(joystick, (Uint8)i, SDL_RELEASED);
+		
+			if (kpad.trigger & WPAD_BUTTON_HOME)
+				fireQuitEvent();
 			break;
 		}
 		case WPAD_EXT_NUNCHUK:
@@ -459,6 +474,9 @@ static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 			y1 = (int16_t) -((kpad.nunchuck.stick.y) * 0x7ff0);
 			SDL_PrivateJoystickAxis(joystick, 0, x1);
 			SDL_PrivateJoystickAxis(joystick, 1, y1);
+
+			if (kpad.trigger & WPAD_BUTTON_HOME)
+				fireQuitEvent();
 			break;
 		}
 		case WPAD_EXT_CLASSIC:
@@ -478,6 +496,9 @@ static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 			SDL_PrivateJoystickAxis(joystick, 1, y1);
 			SDL_PrivateJoystickAxis(joystick, 2, x2);
 			SDL_PrivateJoystickAxis(joystick, 3, y2);
+
+			if (kpad.classic.trigger & WPAD_CLASSIC_BUTTON_HOME)
+				fireQuitEvent();
 			break;
 		}
 		case WPAD_EXT_PRO_CONTROLLER: {
@@ -496,6 +517,9 @@ static void WIIU_JoystickUpdate(SDL_Joystick *joystick)
 			SDL_PrivateJoystickAxis(joystick, 1, y1);
 			SDL_PrivateJoystickAxis(joystick, 2, x2);
 			SDL_PrivateJoystickAxis(joystick, 3, y2);
+
+			if (kpad.pro.trigger & WPAD_PRO_BUTTON_HOME)
+				fireQuitEvent();
 			break;
 		}
 		}
