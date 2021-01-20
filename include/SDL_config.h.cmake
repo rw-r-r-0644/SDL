@@ -479,4 +479,10 @@ typedef unsigned int uintptr_t;
 #  endif /* !_STDINT_H_ && !HAVE_STDINT_H */
 #endif /* __WIN32__ */
 
+#if defined(__WIIU__)
+   /* buffer files using setvbuf */
+   #define SDL_USE_FILE_BUFFER 1
+   #define SDL_FILE_BUFFER_SIZE (128*1024)
+#endif
+
 #endif /* SDL_config_h_ */

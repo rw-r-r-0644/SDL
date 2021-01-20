@@ -125,6 +125,9 @@ typedef struct SDL_RWops
         {
             SDL_bool autoclose;
             FILE *fp;
+#ifdef SDL_USE_FILE_BUFFER
+            char *buffer;
+#endif
         } stdio;
 #endif
         struct

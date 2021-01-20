@@ -60,6 +60,10 @@
 #include "nacl_io/nacl_io.h"
 #endif
 
+#ifdef SDL_USE_FILE_BUFFER
+#include <malloc.h>
+#endif
+
 #ifdef __WIN32__
 
 /* Functions to read/write Win32 API file pointers */
@@ -412,6 +416,9 @@ stdio_close(SDL_RWops * context)
                 status = SDL_Error(SDL_EFWRITE);
             }
         }
+#ifdef SDL_USE_FILE_BUFFER
+        free(context->hidden.stdio.buffer);
+#endif
         SDL_FreeRW(context);
     }
     return status;
@@ -608,6 +615,10 @@ SDL_RWFromFP(FILE * fp, SDL_bool autoclose)
         rwops->write = stdio_write;
         rwops->close = stdio_close;
         rwops->hidden.stdio.fp = fp;
+#ifdef SDL_USE_FILE_BUFFER
+        rwops->hidden.stdio.buffer = (char *) memalign(0x40, SDL_FILE_BUFFER_SIZE);
+        setvbuf(fp, rwops->hidden.stdio.buffer, _IOFBF, SDL_FILE_BUFFER_SIZE);
+#endif
         rwops->hidden.stdio.autoclose = autoclose;
         rwops->type = SDL_RWOPS_STDFILE;
     }
