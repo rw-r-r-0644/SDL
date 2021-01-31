@@ -334,7 +334,7 @@ static void WIIUAUDIO_PlayDevice(_THIS) {
 
 static void WIIUAUDIO_WaitDevice(_THIS) {
 /*  TODO use real thread sync stuff */
-    while (this->hidden->renderingid == this->hidden->playingid) {
+    while (SDL_AtomicGet(&this->enabled) && this->hidden->renderingid == this->hidden->playingid) {
         OSSleepTicks(OSMillisecondsToTicks(3));
     }
 }
