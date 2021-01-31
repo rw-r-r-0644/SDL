@@ -346,6 +346,7 @@ static Uint8* WIIUAUDIO_GetDeviceBuf(_THIS) {
 
 static void WIIUAUDIO_CloseDevice(_THIS) {
     if (AXIsInit()) {
+        AXDeregisterAppFrameCallback(_WIIUAUDIO_framecallback);
         for (int i = 0; i < SIZEOF_ARR(this->hidden->voice); i++) {
             if (this->hidden->voice[i]) {
                 AXFreeVoice(this->hidden->voice[i]);
